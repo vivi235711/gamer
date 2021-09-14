@@ -22,6 +22,8 @@ void Init_TestProb_Hydro_MHD_LinearWave();
 void Init_TestProb_Hydro_JeansInstability();
 void Init_TestProb_Hydro_BarredPot();
 
+void Init_TestProb_Hydro_NewProblem();
+
 void Init_TestProb_ELBDM_ExtPot();
 void Init_TestProb_ELBDM_JeansInstabilityComoving();
 void Init_TestProb_ELBDM_JeansInstabilityPhysical();
@@ -74,6 +76,8 @@ void Init_TestProb()
       case TESTPROB_HYDRO_MHD_ORSZAG_TANG_VORTEX :       Init_TestProb_Hydro_MHD_OrszagTangVortex();        break;
       case TESTPROB_HYDRO_MHD_LINEAR_WAVE :              Init_TestProb_Hydro_MHD_LinearWave();              break;
       case TESTPROB_HYDRO_JEANS_INSTABILITY :            Init_TestProb_Hydro_JeansInstability();            break;
+
+      case TESTPROB_HYDRO_NEW_PROBLEM :                  Init_TestProb_Hydro_NewProblem();                  break;
 
       case TESTPROB_ELBDM_EXTPOT :                       Init_TestProb_ELBDM_ExtPot();                      break;
       case TESTPROB_ELBDM_JEANS_INSTABILITY_COMOVING :   Init_TestProb_ELBDM_JeansInstabilityComoving();    break;
