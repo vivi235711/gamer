@@ -83,6 +83,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "PAR_PREDICT_POS",            &amr->Par->PredictPos,            true,            Useless_bool,  Useless_bool   );
 // do not check PAR_REMOVE_CELL since it may be reset by Init_ResetDefaultParameter()
    ReadPara->Add( "PAR_REMOVE_CELL",            &amr->Par->RemoveCell,           -1.0,             NoMin_double,  NoMax_double   );
+   ReadPara->Add( "OPT__FREEZE_PAR",            &OPT__FREEZE_PAR,                 false,           Useless_bool,  Useless_bool   );
 #  endif // #ifdef PARTICLE
 
 
@@ -251,7 +252,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "ELBDM_LAMBDA",               &ELBDM_LAMBDA,                    1.0,             NoMin_double,  NoMax_double   );
 #  endif
    ReadPara->Add( "ELBDM_TAYLOR3_COEFF",        &ELBDM_TAYLOR3_COEFF,             1.0/6.0,         NoMin_double,  NoMax_double   );
-   ReadPara->Add( "ELBDM_TAYLOR3_AUTO",         &ELBDM_TAYLOR3_AUTO,              true,            Useless_bool,  Useless_bool   );
+   ReadPara->Add( "ELBDM_TAYLOR3_AUTO",         &ELBDM_TAYLOR3_AUTO,              false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "ELBDM_REMOVE_MOTION_CM",     &ELBDM_REMOVE_MOTION_CM,          ELBDM_REMOVE_MOTION_CM_NONE, 0, 2              );
 #  endif // #if ( MODEL == ELBDM )
 
@@ -383,7 +384,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__OUTPUT_PART",           &OPT__OUTPUT_PART,                0,               0,             7              );
    ReadPara->Add( "OPT__OUTPUT_USER",           &OPT__OUTPUT_USER,                false,           Useless_bool,  Useless_bool   );
 #  ifdef PARTICLE
-   ReadPara->Add( "OPT__OUTPUT_PAR_TEXT",       &OPT__OUTPUT_PAR_TEXT,            false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__OUTPUT_PAR_MODE",       &OPT__OUTPUT_PAR_MODE,            0,               0,             2              );
 #  endif
    ReadPara->Add( "OPT__OUTPUT_BASEPS",         &OPT__OUTPUT_BASEPS,              false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__OUTPUT_BASE",           &OPT__OUTPUT_BASE,                false,           Useless_bool,  Useless_bool   );

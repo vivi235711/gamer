@@ -359,6 +359,7 @@ struct InputPara_t
    int    Par_ImproveAcc;
    int    Par_PredictPos;
    double Par_RemoveCell;
+   int    Opt__FreezePar;
    int    Par_GhostSize;
    char  *ParAttLabel[PAR_NATT_TOTAL];
 #  endif
@@ -617,7 +618,7 @@ struct InputPara_t
    int    Opt__Output_Part;
    int    Opt__Output_User;
 #  ifdef PARTICLE
-   int    Opt__Output_ParText;
+   int    Opt__Output_Par_Mode;
 #  endif
    int    Opt__Output_BasePS;
    int    Opt__Output_Base;
