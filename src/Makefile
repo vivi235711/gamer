@@ -236,12 +236,16 @@ SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
 # CXX         = icpc                                      # serial compiler
 CXX         = $(MPI_PATH)/bin/mpicxx                    # MPI compiler
 #CXX         = CC                                        # cray wrapper script
-CXXFLAG     = -g -O3                                    # general flags
-#CXXFLAG     = -g -O3 -std=c++11 #-gxx-name=YOUR_G++
-#CXXFLAG     = -g -fast
-CXXFLAG    += -w1                                       # warning flags
-OPENMPFLAG  = -fopenmp                                  # openmp flag
-LIB         = -limf                                     # libraries and linker flags
+ CXXFLAG     = -g -O3                                    # general flags
+#CXXFLAG     = -g -O3 -std=c++11
+#CXXFLAG     = -g -Ofast
+ CXXFLAG    += -Wall -Wextra                             # warning flags
+ CXXFLAG    += -Wno-unused-variable -Wno-unused-parameter \
+               -Wno-maybe-uninitialized -Wno-unused-but-set-variable \
+               -Wno-unused-result -Wno-unused-function \
+	       -Wno-implicit-fallthrough -Wno-parentheses
+ OPENMPFLAG  = -fopenmp                                  # openmp flag
+ LIB         =                                           # libraries and linker flags
 
 # for debug only
 ifeq "$(filter -DGAMER_DEBUG, $(SIMU_OPTION))" "-DGAMER_DEBUG"
@@ -414,7 +418,7 @@ LIBYT_PATH   :=
 #MPI_PATH     := /cluster/intel-2022.1/openmpi-4.1.2
 #HDF5_PATH    := /cluster/intel-2022.1/hdf5-1.10.8_openmpi4
 #GRACKLE_PATH :=
-#GSL_PATH     :=
+#GSL_PATH     := /usr
 #LIBYT_PATH   :=
 
 
