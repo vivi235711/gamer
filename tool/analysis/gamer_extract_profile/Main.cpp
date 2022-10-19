@@ -263,6 +263,7 @@ void GetRMS()
    real Dens, Real, Imag, Pot, _Dens, ParDens;
    real Ek_Lap, Ek_Gra, GradR[3], GradI[3], LapR, LapI, _2dh, _dh2;
    real v[3], w[3], vr, vr_abs, vt_abs, wr, wr_abs, wt_abs, GradD[3];
+   real vqp[3];
 
 #  else
 #  error : ERROR : unsupported MODEL !!
@@ -441,6 +442,7 @@ void GetRMS()
                      {
                         v[d] = _Eta*_Dens*( Real*GradI[d] - Imag*GradR[d] );
                         w[d] = _2Eta*_Dens*GradD[d];
+                        vqp[d] = _Eta*_Dens*( Real*GradR[d] + Imag*GradI[d] );
                      }
 
                      vr     = ( x*v[0] + y*v[1] + z*v[2] ) / Radius;
@@ -476,7 +478,13 @@ void GetRMS()
                   RMS[ShellID][Var] += dv*pow( double(vt_abs )-Average[ShellID][Var], 2.0 );  Var++;
                   RMS[ShellID][Var] += dv*pow( double(wr     )-Average[ShellID][Var], 2.0 );  Var++;
                   RMS[ShellID][Var] += dv*pow( double(wr_abs )-Average[ShellID][Var], 2.0 );  Var++;
-                  RMS[ShellID][Var] += dv*pow( double(wt_abs )-Average[ShellID][Var], 2.0 );  Var++; }
+                  RMS[ShellID][Var] += dv*pow( double(wt_abs )-Average[ShellID][Var], 2.0 );  Var++; 
+                  RMS[ShellID][Var] += dv*Dens*pow( double(v[0])-Average[ShellID][Var], 2.0 );  Var++;
+                  RMS[ShellID][Var] += dv*Dens*pow( double(v[1])-Average[ShellID][Var], 2.0 );  Var++;
+                  RMS[ShellID][Var] += dv*Dens*pow( double(v[2])-Average[ShellID][Var], 2.0 );  Var++; 
+                  RMS[ShellID][Var] += dv*Dens*pow( double(vqp[0])-Average[ShellID][Var], 2.0 );  Var++;
+                  RMS[ShellID][Var] += dv*Dens*pow( double(vqp[1])-Average[ShellID][Var], 2.0 );  Var++;
+                  RMS[ShellID][Var] += dv*Dens*pow( double(vqp[2])-Average[ShellID][Var], 2.0 );  Var++; }
 
 #                 else
 #                 error : ERROR : unsupported MODEL !!
@@ -496,6 +504,8 @@ void GetRMS()
    for (int n=0; n<NShell; n++)
    for (int v=0; v<NOut; v++)    RMS[n][v] = sqrt( RMS[n][v]/Volume[n] );
 
+   for (int n=0; n<NShell; n++)
+   for (int v=NOut-6; v<NOut; v++)    RMS[n][v] = RMS[n][v]/sqrt(Average[n][0]);
    delete [] Field1D;
 
 } // FUNCTION : GetRMS
@@ -528,6 +538,7 @@ void ShellAverage()
    real Dens, Real, Imag, Pot, _Dens, ParDens;
    real Ek_Lap, Ek_Gra, GradR[3], GradI[3], LapR, LapI, _2dh, _dh2, dv_Eta;
    real v[3], w[3], vr, vr1, vr2, vt1, vt2, wr, wr1, wr2, wt1, wt2, GradD[3], dR_dr, dI_dr;
+   real vqp[3];
 
 #  else
 #  error : ERROR : unsupported MODEL !!
@@ -745,6 +756,7 @@ void ShellAverage()
                      {
                         v[d] = _Eta*_Dens*( Real*GradI[d] - Imag*GradR[d] );
                         w[d] = _2Eta*_Dens*GradD[d];
+                        vqp[d] = _Eta*_Dens*( Real*GradR[d] + Imag*GradI[d] );
                      }
 
                      vr  = ( x*v[0] + y*v[1] + z*v[2] ) / Radius;
@@ -785,6 +797,12 @@ void ShellAverage()
                   Average[ShellID][Var++] += (double)(dv*Dens*wr  );
                   Average[ShellID][Var++] += (double)(dv*Dens*wr2 );
                   Average[ShellID][Var++] += (double)(dv*Dens*wt2 );
+                  Average[ShellID][Var++] += (double)(dv*Dens*v[0] );
+                  Average[ShellID][Var++] += (double)(dv*Dens*v[1] );
+                  Average[ShellID][Var++] += (double)(dv*Dens*v[2] );
+                  Average[ShellID][Var++] += (double)(dv*Dens*vqp[0] );
+                  Average[ShellID][Var++] += (double)(dv*Dens*vqp[1] );
+                  Average[ShellID][Var++] += (double)(dv*Dens*vqp[2] );
 
                   for (int d=0; d<3; d++)    ELBDM_Mom[ShellID][d] += (double)( Real*GradI[d] - Imag*GradR[d] )*dv_Eta;
 
@@ -900,7 +918,7 @@ void ShellAverage()
       for (int n=0; n<NShell; n++)
       {
 //       <v> = <Rho*v>/<Rho>, <|v|> = sqrt( <Rho*v^2>/<Rho> )
-         for (int t=0; t<6; t++)    Average[n][Idx_v+t] /= Average[n][0];
+         for (int t=0; t<12; t++)    Average[n][Idx_v+t] /= Average[n][0];
 
          Average[n][Idx_v+1] = sqrt( Average[n][Idx_v+1] );
          Average[n][Idx_v+2] = sqrt( Average[n][Idx_v+2] );
@@ -1228,6 +1246,12 @@ void Output_ShellAve()
                         sprintf( FileName[Var++], "%s", "AveWr-N"  );
                         sprintf( FileName[Var++], "%s", "AveWr-A"  );
                         sprintf( FileName[Var++], "%s", "AveWt-A"  );
+                        sprintf( FileName[Var++], "%s", "AveVBulk-x"  );
+                        sprintf( FileName[Var++], "%s", "AveVBulk-y"  );
+                        sprintf( FileName[Var++], "%s", "AveVBulk-z"  );
+                        sprintf( FileName[Var++], "%s", "AveVQP-x"  );
+                        sprintf( FileName[Var++], "%s", "AveVQP-y"  );
+                        sprintf( FileName[Var++], "%s", "AveVQP-z"  );
    }
 
 #  else
