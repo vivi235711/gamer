@@ -53,6 +53,7 @@ const TestProbID_t
    TESTPROB_HYDRO_PARTICLE_EQUILIBRIUM_IC      =   17,
    TESTPROB_HYDRO_PARTICLE_TEST                =   18,
    TESTPROB_HYDRO_BARRED_POT                   =   51,
+   TESTPROB_HYDRO_CDM_LSS                      =  100,
 
    TESTPROB_HYDRO_NEW_PROBLEM                  =   123,
 
@@ -278,7 +279,8 @@ const OptFluBC_t
    BC_FLU_PERIODIC   = 1,
    BC_FLU_OUTFLOW    = 2,
    BC_FLU_REFLECTING = 3,
-   BC_FLU_USER       = 4;
+   BC_FLU_USER       = 4,
+   BC_FLU_DIODE      = 5;
 
 
 // gravity boundary conditions
