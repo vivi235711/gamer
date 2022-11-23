@@ -10,7 +10,7 @@ EXECUTABLE := GAMER_ExtractProfile
 # siimulation options
 #######################################################################################################
 # model: HYDRO/MHD/ELBDM
-SIMU_OPTION += -DMODEL=HYDRO
+SIMU_OPTION += -DMODEL=ELBDM
 
 # double precision
 #SIMU_OPTION += -DFLOAT8

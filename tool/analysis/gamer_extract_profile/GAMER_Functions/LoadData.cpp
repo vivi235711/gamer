@@ -327,7 +327,8 @@ void LoadData()
 #     if   ( MODEL == HYDRO )
 #     elif ( MODEL == MHD )
 #     elif ( MODEL == ELBDM )
-      if ( ELBDM_GetVir )  NOut += 8;
+      // if ( ELBDM_GetVir )  NOut += 8;
+      if ( ELBDM_GetVir )  NOut += 20;
 #     else
 #     error : ERROR : unsupported MODEL !!
 #     endif // MODEL
