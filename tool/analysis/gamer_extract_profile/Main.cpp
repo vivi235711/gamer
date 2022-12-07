@@ -464,7 +464,6 @@ void GetCoM()
          if (NCount[n]!=0 && Average[n][3]==Average[n][3])
          {
             for (int t=0; t<6; t++)  vsum[t] += Average[n][t+3] * Volume[n];
-            cout << Average[n][3] << endl;
             massAll += Volume[n]*Average[n][0];
          }
       }
