@@ -24,6 +24,7 @@ void Init_TestProb_Hydro_ParEqmIC();
 void Init_TestProb_Hydro_BarredPot();
 void Init_TestProb_Hydro_ParticleTest();
 void Init_TestProb_Hydro_CDM_LSS();
+void Init_TestProb_Hydro_Zeldovich();
 
 void Init_TestProb_Hydro_NewProblem();
 
@@ -37,6 +38,7 @@ void Init_TestProb_ELBDM_VortexPairLinear();
 void Init_TestProb_ELBDM_IsolatedHalo();
 void Init_TestProb_ELBDM_GaussianWavePacket();
 void Init_TestProb_ELBDM_LSS();
+void Init_TestProb_ELBDM_PlaneWave();
 
 
 
@@ -82,6 +84,7 @@ void Init_TestProb()
       case TESTPROB_HYDRO_PARTICLE_EQUILIBRIUM_IC :      Init_TestProb_Hydro_ParEqmIC();                    break;
       case TESTPROB_HYDRO_PARTICLE_TEST :                Init_TestProb_Hydro_ParticleTest();                break;
       case TESTPROB_HYDRO_CDM_LSS :                      Init_TestProb_Hydro_CDM_LSS();                     break;
+      case TESTPROB_HYDRO_ZELDOVICH :                    Init_TestProb_Hydro_Zeldovich();                   break;
 
       case TESTPROB_HYDRO_NEW_PROBLEM :                  Init_TestProb_Hydro_NewProblem();                  break;
 
@@ -95,6 +98,7 @@ void Init_TestProb()
       case TESTPROB_ELBDM_ISOLATED_HALO :                Init_TestProb_ELBDM_IsolatedHalo();                break;
       case TESTPROB_ELBDM_GAUSSIAN_WAVE_PACKET :         Init_TestProb_ELBDM_GaussianWavePacket();          break;
       case TESTPROB_ELBDM_LSS :                          Init_TestProb_ELBDM_LSS();                         break;
+      case TESTPROB_ELBDM_PLANE_WAVE :                   Init_TestProb_ELBDM_PlaneWave();                   break;
 
       default: Aux_Error( ERROR_INFO, "unsupported TESTPROB_ID (%d) !!\n", TESTPROB_ID );
    } // switch( TESTPROB_ID )

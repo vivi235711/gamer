@@ -116,6 +116,7 @@ struct Makefile_t
    int Laohu;
    int SupportHDF5;
    int SupportGSL;
+   int SupportFFTW;
    int SupportLibYT;
 #  ifdef SUPPORT_LIBYT
    int LibYTUsePatchGroup;
@@ -421,6 +422,7 @@ struct InputPara_t
 
 // domain refinement
    int    RegridCount;
+   int    RefineNLevel;
    int    FlagBufferSize;
    int    FlagBufferSizeMaxM1Lv;
    int    FlagBufferSizeMaxM2Lv;
@@ -523,6 +525,7 @@ struct InputPara_t
 #  endif
    int    Opt__OverlapMPI;
    int    Opt__ResetFluid;
+   int    Opt__ResetFluidInit;
    int    Opt__FreezeFluid;
 #  if ( MODEL == HYDRO  ||  MODEL == ELBDM )
    double MinDens;
@@ -627,6 +630,7 @@ struct InputPara_t
 #  endif
 #  if ( MODEL == ELBDM )
    int    Opt__Int_Phase;
+   int    Opt__Res_Phase;
 #  endif
    int    Opt__Flu_IntScheme;
    int    Opt__RefFlu_IntScheme;
