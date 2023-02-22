@@ -37,7 +37,7 @@ SIMU_OPTION += -DMODEL=ELBDM
 
 # enable gravity
 # --> must enable SUPPORT_FFTW
-#SIMU_OPTION += -DGRAVITY
+SIMU_OPTION += -DGRAVITY
 
 # enable particles
 #SIMU_OPTION += -DPARTICLE
@@ -128,7 +128,7 @@ SIMU_OPTION += -DSTORE_POT_GHOST
 # SIMU_OPTION += -DUNSPLIT_GRAVITY
 
 # comoving frame for cosmological simulations
-SIMU_OPTION += -DCOMOVING
+# SIMU_OPTION += -DCOMOVING
 endif # GRAVITY
 
 
@@ -214,7 +214,7 @@ SIMU_OPTION += -DSUPPORT_HDF5
 
 # support FFTW library
 # --> must be enabled when GRAVITY is enabled
-#SIMU_OPTION += -DSUPPORT_FFTW
+SIMU_OPTION += -DSUPPORT_FFTW
 
 # support yt inline analysis
 #SIMU_OPTION += -DSUPPORT_LIBYT
