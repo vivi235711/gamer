@@ -230,17 +230,31 @@ void Aux_Check_Parameter()
       if ( OPT__TIMING_BARRIER )
          Aux_Error( ERROR_INFO, "OPT__MINIMIZE_MPI_BARRIER does NOT work with OPT__TIMING_BARRIER !!\n" );
 
-      if ( AUTO_REDUCE_DT  &&  MPI_Rank == 0 )
+      if ( MPI_Rank == 0 ) {
+      if ( AUTO_REDUCE_DT )
          Aux_Message( stderr, "WARNING : AUTO_REDUCE_DT will introduce an extra MPI barrier for OPT__MINIMIZE_MPI_BARRIER !!\n" );
-   }
+
+#     ifdef FEEDBACK
+         Aux_Message( stderr, "WARNING : OPT__MINIMIZE_MPI_BARRIER + FEEDBACK --> must ensure feedback does not need potential ghost zones !!\n" );
+#     endif
+      } // if ( MPI_Rank == 0 )
+   } // if ( OPT__MINIMIZE_MPI_BARRIER )
 
 #  ifdef BITWISE_REPRODUCIBILITY
    if ( OPT__CORR_AFTER_ALL_SYNC != CORR_AFTER_SYNC_BEFORE_DUMP  &&  OPT__CORR_AFTER_ALL_SYNC != CORR_AFTER_SYNC_EVERY_STEP )
-      Aux_Error( ERROR_INFO, "please set OPT__CORR_AFTER_ALL_SYNC to 1/2 when BITWISE_REPRODUCIBILITY is enabled !!\n" );
+      Aux_Error( ERROR_INFO, "please set OPT__CORR_AFTER_ALL_SYNC to 1/2 for BITWISE_REPRODUCIBILITY !!\n" );
 
    if ( ! OPT__FIXUP_RESTRICT )
       Aux_Error( ERROR_INFO, "must enable OPT__FIXUP_RESTRICT for BITWISE_REPRODUCIBILITY !!\n" );
+
+   if ( ! OPT__SORT_PATCH_BY_LBIDX )
+      Aux_Error( ERROR_INFO, "must enable OPT__SORT_PATCH_BY_LBIDX for BITWISE_REPRODUCIBILITY !!\n" );
+
+#  ifdef SUPPORT_FFTW
+   if ( OPT__FFTW_STARTUP != FFTW_STARTUP_ESTIMATE )
+      Aux_Error( ERROR_INFO, "must set OPT__FFTW_STARTUP=0 (FFTW_STARTUP_ESTIMATE) for BITWISE_REPRODUCIBILITY !!\n" );
 #  endif
+#  endif // #ifdef BITWISE_REPRODUCIBILITY
 
 #  if ( !defined SERIAL  &&  !defined LOAD_BALANCE )
    if ( OPT__INIT == INIT_BY_FILE )
@@ -462,7 +476,8 @@ void Aux_Check_Parameter()
 
 // for sending fluid data fixed by coarse-fine fluxes correctly
    if ( OPT__FIXUP_FLUX  &&  Flu_ParaBuf >= PATCH_SIZE )
-      Aux_Error( ERROR_INFO, "\"%s\" is required for \"%s\" in LOAD_BALANCE --> check LB_RecordExchangeFixUpDataPatchID() !!\n",
+      Aux_Error( ERROR_INFO, "\"%s\" is required for \"%s\" in LOAD_BALANCE --> check LB_RecordExchangeFixUpDataPatchID() !!\n \
+                  For ( MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE ) consider turning OPT__FIXUP_FLUX off or increase the patch size!! \n",
                  "Flu_ParaBuf < PATCH_SIZE", "OPT__FIXUP_FLUX" );
 
 // ensure that the variable "PaddedCr1D" will not overflow
@@ -530,7 +545,7 @@ void Aux_Check_Parameter()
                    "COMOVING", "GRAVITY" );
 #  endif
 
-#endif // COMOVING
+#endif // #ifdef COMOVING
 
 
 
@@ -541,17 +556,6 @@ void Aux_Check_Parameter()
 // ------------------------------
    if ( Flu_ParaBuf > PATCH_SIZE )
       Aux_Error( ERROR_INFO, "Flu_ParaBuf (%d) > PATCH_SIZE (%d) !!\n", Flu_ParaBuf, PATCH_SIZE );
-
-   if ( GPU_NSTREAM < 1 )  Aux_Error( ERROR_INFO, "GPU_NSTREAM (%d) < 1 !!\n", GPU_NSTREAM );
-
-   if ( FLU_GPU_NPGROUP % GPU_NSTREAM != 0 )
-      Aux_Error( ERROR_INFO, "FLU_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
-                 FLU_GPU_NPGROUP, GPU_NSTREAM );
-
-#  ifdef OPENMP
-   if ( FLU_GPU_NPGROUP < OMP_NTHREAD )
-      Aux_Error( ERROR_INFO, "FLU_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", FLU_GPU_NPGROUP, OMP_NTHREAD );
-#  endif
 
    if ( OPT__FIXUP_FLUX  &&  !amr->WithFlux )
       Aux_Error( ERROR_INFO, "%s is enabled but amr->WithFlux is off !!\n", "OPT__FIXUP_FLUX" );
@@ -770,6 +774,9 @@ void Aux_Check_Parameter()
    if ( JEANS_MIN_PRES )
       Aux_Error( ERROR_INFO, "RTVD does not support \"JEANS_MIN_PRES\" !!\n" );
 #  endif
+
+   if ( MU_NORM <= 0.0 )
+      Aux_Error( ERROR_INFO, "MU_NORM (%14.7e) <= 0.0 !!\n", MU_NORM );
 
 
 // warnings
@@ -1023,6 +1030,11 @@ void Aux_Check_Parameter()
 
 // errors
 // ------------------------------
+
+#  if (  !defined( WAVE_SCHEME )  ||  ( WAVE_SCHEME != WAVE_FD && WAVE_SCHEME != WAVE_GRAMFE )  )
+#     error : ERROR : WAVE_SCHEME not defined or unsupported in ELBDM !!
+#  endif
+
 #  if ( NCOMP_FLUID != 3 )
 #     error : ERROR : NCOMP_FLUID != 3 in ELBDM !!
 #  endif
@@ -1072,18 +1084,19 @@ void Aux_Check_Parameter()
       Aux_Error( ERROR_INFO, "\"%s\" does NOT support \"%s\" !!\n", "ELBDM_REMOVE_MOTION_CM", "BITWISE_REPRODUCIBILITY" );
 #  endif
 
+   for (int f=0; f<6; f++)
+      if ( ELBDM_BASE_SPECTRAL  &&  OPT__BC_FLU[f] != BC_FLU_PERIODIC )
+         Aux_Error( ERROR_INFO, "ELBDM_BASE_SPECTRAL only works with periodic boundary condition (OPT__BC_FLU=1) !!\n" );
 
-// warnings
-// ------------------------------
-   if ( MPI_Rank == 0 ) {
-
-#  if ( NCOMP_PASSIVE > 0 )
-   Aux_Message( stderr, "WARNING : NCOMP_PASSIVE (%d) > 0 but ELBDM does not really support passive scalars !!\n",
-                NCOMP_PASSIVE );
+#  ifndef SUPPORT_FFTW
+   if ( ELBDM_BASE_SPECTRAL )
+      Aux_Error( ERROR_INFO, "ELBDM_BASE_SPECTRAL must work with SUPPORT_FFTW !!\n" );
 #  endif
 
+#  if ( WAVE_SCHEME == WAVE_FD )
+
    if ( !ELBDM_TAYLOR3_AUTO  &&  ELBDM_TAYLOR3_COEFF < 1.0/8.0 )
-      Aux_Message( stderr, "WARNING : ELBDM_TAYLOR3_COEFF (%13.7e) < 0.125 is unconditionally unstable !!\n",
+      Aux_Error( ERROR_INFO, "ELBDM_TAYLOR3_COEFF (%13.7e) < 0.125 is unconditionally unstable !!\n",
                    ELBDM_TAYLOR3_COEFF );
 
 #  ifdef LAPLACIAN_4TH
@@ -1092,11 +1105,11 @@ void Aux_Check_Parameter()
    const double dt_fluid_max = 0.25*M_PI;
 #  endif
    if ( DT__FLUID > dt_fluid_max )
-      Aux_Message( stderr, "WARNING : DT__FLUID (%13.7e) > %13.7e is unconditionally unstable (even with %s) !!\n",
+      Aux_Error( ERROR_INFO, "DT__FLUID (%13.7e) > %13.7e is unconditionally unstable (even with %s) !!\n",
                    DT__FLUID, dt_fluid_max, "ELBDM_TAYLOR3_AUTO" );
 
    if ( DT__FLUID_INIT > dt_fluid_max )
-      Aux_Message( stderr, "WARNING : DT__FLUID_INIT (%13.7e) > %13.7e is unconditionally unstable (even with %s) !!\n",
+      Aux_Error( ERROR_INFO, "DT__FLUID_INIT (%13.7e) > %13.7e is unconditionally unstable (even with %s) !!\n",
                    DT__FLUID_INIT, dt_fluid_max, "ELBDM_TAYLOR3_AUTO" );
 
    if ( !ELBDM_TAYLOR3_AUTO )
@@ -1110,23 +1123,63 @@ void Aux_Check_Parameter()
 
       if ( DT__FLUID > dt_fluid_max_normal  &&  ELBDM_TAYLOR3_COEFF <= 1.0/6.0 )
       {
-         Aux_Message( stderr, "WARNING : DT__FLUID (%13.7e) > stability limit (%13.7e) for ELBDM_TAYLOR3_COEFF <= 1/6\n",
+         Aux_Error( ERROR_INFO, "DT__FLUID (%13.7e) > stability limit (%13.7e) for ELBDM_TAYLOR3_COEFF <= 1/6\n",
                       DT__FLUID, dt_fluid_max_normal );
-         Aux_Message( stderr, "          --> Please either (a) set ELBDM_TAYLOR3_COEFF (%13.7e) > 1/6\n",
+         Aux_Error( ERROR_INFO, "          --> Please either (a) set ELBDM_TAYLOR3_COEFF (%13.7e) > 1/6\n",
                       ELBDM_TAYLOR3_COEFF );
-         Aux_Message( stderr, "                            (b) set DT__FLUID smaller (c) turn on ELBDM_TAYLOR3_AUTO\n" );
+         Aux_Error( ERROR_INFO, "                            (b) set DT__FLUID smaller (c) turn on ELBDM_TAYLOR3_AUTO\n" );
       }
 
       if ( DT__FLUID_INIT > dt_fluid_max_normal  &&  ELBDM_TAYLOR3_COEFF <= 1.0/6.0 )
       {
-         Aux_Message( stderr, "WARNING : DT__FLUID_INIT (%13.7e) > stability limit (%13.7e) for ELBDM_TAYLOR3_COEFF <= 1/6\n",
+         Aux_Error( ERROR_INFO, "DT__FLUID_INIT (%13.7e) > stability limit (%13.7e) for ELBDM_TAYLOR3_COEFF <= 1/6\n",
                       DT__FLUID_INIT, dt_fluid_max_normal );
-         Aux_Message( stderr, "          --> Please either (a) set ELBDM_TAYLOR3_COEFF (%13.7e) > 1/6\n",
+         Aux_Error( ERROR_INFO, "          --> Please either (a) set ELBDM_TAYLOR3_COEFF (%13.7e) > 1/6\n",
                       ELBDM_TAYLOR3_COEFF );
-         Aux_Message( stderr, "                            (b) set DT__FLUID_INIT smaller (c) turn on ELBDM_TAYLOR3_AUTO\n" );
+         Aux_Error( ERROR_INFO, "                            (b) set DT__FLUID_INIT smaller (c) turn on ELBDM_TAYLOR3_AUTO\n" );
       }
    }
 
+#  elif ( WAVE_SCHEME == WAVE_GRAMFE )
+
+   const double dt_fluid_max = 0.35;
+
+   if ( DT__FLUID > dt_fluid_max )
+      Aux_Error( ERROR_INFO, "%s solver with DT__FLUID (%13.7e) > %13.7e is unstable !!\n",
+                   "WAVE_GRAMFE", DT__FLUID, dt_fluid_max );
+
+#  ifndef GRAMFE_FLOAT8
+#  error : ERROR : WAVE_GRAMFE solver requires GRAMFE_FLOAT8 for stability !!
+#  endif // # ifndef GRAMFE_FLOAT8
+
+#  if ( FLU_GHOST_SIZE < 6 )
+#  error : ERROR : WAVE_GRAMFE is only stable (empirically) for FLU_GHOST_SIZE >= 6!
+#  endif // #  if ( FLU_GHOST_SIZE < 6 )
+
+#  if ( !defined(GPU) && defined(GRAMFE_ENABLE_GPU) )
+#  error : ERROR : Gram-Fourier extension scheme GRAMFE_ENABLE_GPU option requires GPU flag!
+#  endif // #  if ( !defined(GPU) && defined(GRAMFE_ENABLE_GPU) )
+
+#  if ( ( !defined(GPU) || ( defined(GPU) && !defined(GRAMFE_ENABLE_GPU) ) ) && !defined(SUPPORT_FFTW) )
+#  error : ERROR : CPU Gram-Fourier extension scheme requires SUPPORT_FFTW flag!
+#  endif // #  if ( ( !defined(GPU) || ( defined(GPU) && !defined(GRAMFE_ENABLE_GPU) ) ) && !defined(SUPPORT_FFTW) )
+
+#  if ( ( !defined(GPU) || ( defined(GPU) && !defined(GRAMFE_ENABLE_GPU) ) ) && SUPPORT_FFTW == FFTW2 && !defined(FLOAT8) )
+#  error : ERROR : CPU Gram-Fourier extension scheme using FFTW2 requires FLOAT8!
+#  endif // #  if ( ( !defined(GPU) || ( defined(GPU) && !defined(GRAMFE_ENABLE_GPU) ) ) && SUPPORT_FFTW == FFTW2 && !defined(FLOAT8) )
+
+#  endif // #  if ( WAVE_SCHEME == WAVE_GRAMFE )
+
+// warnings
+// ------------------------------
+   if ( MPI_Rank == 0 ) {
+
+#  if ( NCOMP_PASSIVE > 0 )
+   Aux_Message( stderr, "WARNING : NCOMP_PASSIVE (%d) > 0 but ELBDM does not really support passive scalars !!\n",
+                NCOMP_PASSIVE );
+#  endif
+
+#  if ( WAVE_SCHEME == WAVE_FD )
    if ( DT__PHASE > 1.0 )
       Aux_Message( stderr, "WARNING : DT__PHASE (%13.7e) is not within the normal range [0...1] !!\n", DT__PHASE );
 
@@ -1138,6 +1191,19 @@ void Aux_Check_Parameter()
    if ( !OPT__FIXUP_FLUX )
       Aux_Message( stderr, "WARNING : %s is disabled in ELBDM even though CONSERVE_MASS is on !!\n",
                    "OPT__FIXUP_FLUX" );
+   if ( ELBDM_BASE_SPECTRAL )
+      Aux_Message( stderr, "WARNING : mass may not conserve with the %s solver even though CONSERVE_MASS is on !!\n",
+                   "ELBDM_BASE_SPECTRAL" );
+   if ( ELBDM_BASE_SPECTRAL && OPT__FIXUP_FLUX )
+      Aux_Message( stderr, "WARNING : OPT__FIXUP_FLUX will not be applied to the base level when %s is on !!\n",
+                   "ELBDM_BASE_SPECTRAL" );
+
+#  if ( WAVE_SCHEME == WAVE_GRAMFE )
+   if ( OPT__FIXUP_FLUX )
+      Aux_Message( stderr, "WARNING : OPT__FIXUP_FLUX will not be applied when %s is on !!\n",
+                   "WAVE_SCHEME == WAVE_GRAMFE" );
+#  endif // # if ( WAVE_SCHEME == WAVE_GRAMFE )
+
 #  else
    if ( OPT__FIXUP_FLUX )
       Aux_Message( stderr, "WARNING : %s is useless in ELBDM when CONSERVE_MASS is off !!\n", "OPT__FIXUP_FLUX" );
@@ -1146,8 +1212,16 @@ void Aux_Check_Parameter()
    if ( OPT__INIT == INIT_BY_FILE )
       Aux_Message( stderr, "WARNING : currently we don't check MIN_DENS for the initial data loaded from UM_IC !!\n" );
 
-   } // if ( MPI_Rank == 0 )
+#  elif ( WAVE_SCHEME == WAVE_GRAMFE ) // #  if ( WAVE_SCHEME == WAVE_FD )
 
+#  ifdef CONSERVE_MASS
+   Aux_Message( stderr, "WARNING : mass is not conserved with the %s solver even though CONSERVE_MASS is on !!\n",
+                  "WAVE_GRAMFE" );
+#  endif // #  ifdef CONSERVE_MASS
+
+#  endif // #  if ( WAVE_SCHEME == WAVE_FD ) ... # else
+
+   } // if ( MPI_Rank == 0 )
 #  else
 #  error : ERROR : unsupported MODEL !!
 #  endif // MODEL
@@ -1162,6 +1236,10 @@ void Aux_Check_Parameter()
 // ------------------------------
 #  ifndef SUPPORT_FFTW
 #     error : ERROR : SUPPORT_FFTW must be enabled in the makefile when GRAVITY is on !!
+#  endif
+
+#  if (  defined SUPPORT_FFTW  &&  ( SUPPORT_FFTW != FFTW2 && SUPPORT_FFTW != FFTW3 )  )
+#     error : ERROR : SUPPORT_FFTW != FFTW2/FFTW3 !!
 #  endif
 
 #  if ( POT_SCHEME != SOR  &&  POT_SCHEME != MG )
@@ -1212,15 +1290,6 @@ void Aux_Check_Parameter()
    if ( MG_NPRE_SMOOTH < 0 )           Aux_Error( ERROR_INFO, "MG_NPRE_SMOOTH (%d) < 0 !!\n", MG_NPRE_SMOOTH );
    if ( MG_NPOST_SMOOTH < 0 )          Aux_Error( ERROR_INFO, "MG_NPOST_SMOOTH (%d) < 0 !!\n", MG_NPOST_SMOOTH );
    if ( MG_TOLERATED_ERROR < 0.0 )     Aux_Error( ERROR_INFO, "MG_TOLERATED_ERROR (%14.7e) < 0.0 !!\n", MG_TOLERATED_ERROR );
-#  endif
-
-   if ( POT_GPU_NPGROUP % GPU_NSTREAM != 0 )
-      Aux_Error( ERROR_INFO, "POT_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
-                 POT_GPU_NPGROUP, GPU_NSTREAM );
-
-#  ifdef OPENMP
-   if ( POT_GPU_NPGROUP < OMP_NTHREAD )
-      Aux_Error( ERROR_INFO, "POT_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", POT_GPU_NPGROUP, OMP_NTHREAD );
 #  endif
 
 #  if ( NLEVEL > 1 )
@@ -1319,7 +1388,7 @@ void Aux_Check_Parameter()
 #  error : unsupported MODEL !!
 #  endif // MODEL
 
-#endif // GRAVITY
+#endif // #ifdef GRAVITY
 
 
 
@@ -1428,7 +1497,7 @@ void Aux_Check_Parameter()
    }
 
 
-#endif // PARTICLE
+#endif // #ifdef PARTICLE
 
 
 
@@ -1438,19 +1507,8 @@ void Aux_Check_Parameter()
 
 // errors
 // ------------------------------
-   /*
-   if ( CHE_GPU_NPGROUP % GPU_NSTREAM != 0 )
-      Aux_Error( ERROR_INFO, "CHE_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
-                 CHE_GPU_NPGROUP, GPU_NSTREAM );
-                 */
-
 #  if ( EOS != EOS_GAMMA )
 #     error : ERROR : SUPPORT_GRACKLE must work with EOS_GAMMA !!
-#  endif
-
-#  ifdef OPENMP
-   if ( CHE_GPU_NPGROUP < OMP_NTHREAD )
-      Aux_Error( ERROR_INFO, "CHE_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", CHE_GPU_NPGROUP, OMP_NTHREAD );
 #  endif
 
 // warning
@@ -1465,7 +1523,7 @@ void Aux_Check_Parameter()
 
    } // if ( MPI_Rank == 0 )
 
-#endif // SUPPORT_GRACKLE
+#endif // #ifdef SUPPORT_GRACKLE
 
 
 
@@ -1481,15 +1539,6 @@ void Aux_Check_Parameter()
 #  if ( MODEL != HYDRO )
    if ( SrcTerms.Deleptonization )
       Aux_Error( ERROR_INFO, "SRC_DELEPTONIZATION is only supported in HYDRO !!\n" );
-#  endif
-
-   if ( SRC_GPU_NPGROUP % GPU_NSTREAM != 0 )
-      Aux_Error( ERROR_INFO, "SRC_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
-                 SRC_GPU_NPGROUP, GPU_NSTREAM );
-
-#  ifdef OPENMP
-   if ( SRC_GPU_NPGROUP < OMP_NTHREAD )
-      Aux_Error( ERROR_INFO, "SRC_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", SRC_GPU_NPGROUP, OMP_NTHREAD );
 #  endif
 
 // warning
@@ -1531,7 +1580,40 @@ void Aux_Check_Parameter()
 
    } // if ( MPI_Rank == 0 )
 
-#endif // ifdef STAR_FORMATION
+#endif // #ifdef STAR_FORMATION
+
+
+
+// feedback
+// =======================================================================================
+#ifdef FEEDBACK
+
+// errors
+// ------------------------------
+#  ifndef PARTICLE
+#     error : FEEDBACK must work with PARTICLE !!
+#  endif
+
+   if ( FB_LEVEL != MAX_LEVEL )  Aux_Error( ERROR_INFO, "FB_LEVEL (%d) != MAX_LEVEL (%d) !!\n", FB_LEVEL, MAX_LEVEL );
+
+   for (int d=0; d<3; d++)
+   {
+//    we have assumed that OPT__BC_FLU[2*d] == OPT__BC_FLU[2*d+1] when adopting the periodic BC
+      if ( OPT__BC_FLU[2*d] == BC_FLU_PERIODIC  &&  NX0_TOT[d]/PS2 == 1 )
+         Aux_Error( ERROR_INFO, "\"%s\" does NOT work for NX0_TOT[%d] = 2*PATCH_SIZE when periodic BC is adopted !!\n",
+                    "FB_AdvanceDt()", d );
+   }
+
+   if ( FB_ParaBuf > PATCH_SIZE )
+      Aux_Error( ERROR_INFO, "FB_ParaBuf (%d) > PATCH_SIZE (%d) !!\n", FB_ParaBuf, PATCH_SIZE );
+
+// warning
+// ------------------------------
+   if ( MPI_Rank == 0 ) {
+
+   } // if ( MPI_Rank == 0 )
+
+#endif // #ifdef FEEDBACK
 
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "Aux_Check_Parameter ... done\n" );

@@ -52,6 +52,7 @@ template <typename T> int  Aux_LoadTable( T *&Data, const char *FileName, const 
                                           const bool RowMajor, const bool AllocMem );
 int Aux_IsFinite( const float x );
 int Aux_IsFinite( const double x );
+void Aux_PauseManually();
 
 
 // Buffer
@@ -216,15 +217,13 @@ void Init_ByRestart_HDF5( const char *FileName );
 #ifdef SUPPORT_FFTW
 void End_FFTW();
 void Init_FFTW();
-void Patch2Slab_Rho( real *RhoK, real *SendBuf_Rho, real *RecvBuf_Rho, long *SendBuf_SIdx, long *RecvBuf_SIdx,
-                     int **List_PID, int **List_k, int *List_NSend_Rho, int *List_NRecv_Rho,
-                     const int *List_z_start, const int local_nz, const int FFT_Size[], const int NRecvSlice,
-                     const double PrepTime, const bool AddExtraMass );
-#ifdef GRAVITY
-void Slab2Patch_Pot( const real *RhoK, real *SendBuf, real *RecvBuf, const int SaveSg, const long *List_SIdx,
-                     int **List_PID, int **List_k, int *List_NSend, int *List_NRecv, const int local_nz, const int FFT_Size[],
-                     const int NSendSlice );
-#endif
+void Patch2Slab( real *VarS, real *SendBuf_Var, real *RecvBuf_Var, long *SendBuf_SIdx, long *RecvBuf_SIdx,
+                 int **List_PID, int **List_k, int *List_NSend_Var, int *List_NRecv_Var,
+                 const int *List_z_start, const int local_nz, const int FFT_Size[], const int NRecvSlice,
+                 const double PrepTime, const long TVar, const bool InPlacePad, const bool ForPoisson, const bool AddExtraMass );
+void Slab2Patch( const real *VarS, real *SendBuf, real *RecvBuf, const int SaveSg, const long *List_SIdx,
+                 int **List_PID, int **List_k, int *List_NSend, int *List_NRecv, const int local_nz, const int FFT_Size[],
+                 const int NSendSlice, const long TVar, const bool InPlacePad );
 #endif // #ifdef SUPPORT_FFTW
 
 
@@ -300,7 +299,9 @@ void Output_PreparedPatch_Fluid( const int TLv, const int TPID,
                                  const real h_Flu_Array[][FLU_NIN][ CUBE(FLU_NXT) ],
                                  const real h_Mag_Array[][NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ],
                                  const int NPG, const int *PID0_List, const int CLv, const char *comment );
-void Output_BasePowerSpectrum( const char *FileName );
+#ifdef SUPPORT_FFTW
+void Output_BasePowerSpectrum( const char *FileName, const long TVar );
+#endif
 void Output_L1Error( void (*AnalFunc_Flu)( real fluid[], const double x, const double y, const double z, const double Time,
                                            const int lv, double AuxArray[] ),
                      void (*AnalFunc_Mag)( real magnetic[], const double x, const double y, const double z, const double Time,
@@ -445,7 +446,8 @@ void LB_GetBufferData( const int lv, const int FluSg, const int MagSg, const int
 real*LB_GetBufferData_MemAllocate_Send( const int NSend );
 real*LB_GetBufferData_MemAllocate_Recv( const int NRecv );
 void LB_GrandsonCheck( const int lv );
-void LB_Init_LoadBalance( const bool Redistribute, const bool SendGridData, const double ParWeight, const bool Reset, const int TLv );
+void LB_Init_LoadBalance( const bool Redistribute, const bool SendGridData, const double ParWeight, const bool Reset,
+                          const bool SortRealPatch, const int TLv );
 void LB_Init_ByFunction();
 void LB_Init_Refine( const int FaLv, const bool AllocData );
 void LB_SetCutPoint( const int lv, const int NPG_Total, long *CutPoint, const bool InputLBIdx0AndLoad,
@@ -522,7 +524,8 @@ void MHD_BoundaryCondition_User( real **Array, const int BC_Face, const int NVar
                                  const int ArraySizeX, const int ArraySizeY, const int ArraySizeZ,
                                  const int Idx_Start[], const int Idx_End[], const int TVarIdxList[],
                                  const double Time, const double dh, const double *Corner, const int lv );
-void MHD_Init_BField_ByFile( const int B_lv );
+void MHD_Init_BField_ByVecPot_File( const int B_lv );
+void MHD_Init_BField_ByVecPot_Function( const int B_lv );
 #ifdef LOAD_BALANCE
 void MHD_LB_EnsureBFieldConsistencyAfterRestrict( const int lv );
 void MHD_LB_AllocateElectricArray( const int FaLv );
@@ -542,6 +545,9 @@ bool   ELBDM_Flag_EngyDensity( const int i, const int j, const int k, const real
 real   ELBDM_UnwrapPhase( const real Phase_Ref, const real Phase_Wrapped );
 real   ELBDM_SetTaylor3Coeff( const real dt, const real dh, const real Eta );
 void   ELBDM_RemoveMotionCM();
+#ifdef SUPPORT_FFTW
+void   CPU_ELBDMSolver_FFT( const real dt, const double PrepTime, const int SaveSg );
+#endif
 
 
 #else
@@ -634,6 +640,7 @@ void Par_MassAssignment( const long *ParList, const long NPar, const ParInterp_t
                          const int RhoSize, const double *EdgeL, const double dh, const bool PredictPos,
                          const double TargetTime, const bool InitZero, const bool Periodic[], const int PeriodicSize[3],
                          const bool UnitDens, const bool CheckFarAway, const bool UseInputMassPos, real **InputMassPos );
+void Par_SortByPos( const long NPar, const real *PosX, const real *PosY, const real *PosZ, int *IdxTable );
 void Par_UpdateParticle( const int lv, const double TimeNew, const double TimeOld, const ParUpStep_t UpdateStep,
                          const bool StoreAcc, const bool UseStoredAcc );
 void Par_UpdateTracerParticle( const int lv, const double TimeNew, const double TimeOld,
@@ -746,6 +753,16 @@ void SF_FreeRNG();
 void SF_CreateStar_AGORA( const int lv, const real TimeNew, const real dt, RandomNumber_t *RNG,
                           const real GasDensThres, const real Efficiency, const real MinStarMass, const real MaxStarMFrac,
                           const bool DetRandom, const bool UseMetal );
+#endif
+
+
+// feedback
+#ifdef FEEDBACK
+void FB_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, const double dt,
+                   const int SaveSg_Flu, const int SaveSg_Mag );
+void FB_Init();
+void FB_End();
+int FB_Aux_CellPatchRelPos( const int ijk[] );
 #endif
 
 

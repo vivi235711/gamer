@@ -71,15 +71,25 @@ void Init_ResetParameter()
 #     endif
 
 #     elif  ( MODEL == ELBDM )
+#     if ( WAVE_SCHEME == WAVE_FD )
 #     ifdef GRAVITY
       DT__FLUID = 0.20;                   // 1D k-max mode rotates 0.20*2*PI
-#     else
+#     else // # ifdef GRAVITY
 #     ifdef LAPLACIAN_4TH
       DT__FLUID = SQRT(27.0)*M_PI/32.0;   // stability limit (~0.51)
-#     else
+#     else // # ifdef LAPLACIAN_4TH
       DT__FLUID = SQRT(3.0)*M_PI/8.0;     // stability limit (~0.68)
-#     endif
-#     endif // #ifdef GRAVITY ... else ...
+#     endif // # ifdef LAPLACIAN_4TH ... # else
+#     endif // # ifdef GRAVITY ... # else
+#     elif ( WAVE_SCHEME == WAVE_GRAMFE )
+#     ifdef GRAVITY
+      DT__FLUID = 0.20;                   // 1D k-max mode rotates 0.20*2*PI
+#     else // # ifdef GRAVITY
+      DT__FLUID = 0.30;                   // stability limit depends on ghost boundary and extension order
+#     endif // # ifdef GRAVITY ... # else
+#     else // #  if (WAVE_SCHEME == WAVE_FD )
+#        error : ERROR : unsupported WAVE_SCHEME !!
+#     endif // WAVE_SCHEME
 
 #     else
 #     error : ERROR : unsupported MODEL !!
@@ -891,6 +901,23 @@ void Init_ResetParameter()
 #  endif
 
 
+#  if ( MODEL == HYDRO )
+   if      ( MU_NORM < 0.0 )
+   {
+      MU_NORM = Const_mH;
+
+      PRINT_WARNING( MU_NORM, FORMAT_FLT, "" );
+   }
+
+   else if ( MU_NORM == 0.0 )
+   {
+      MU_NORM = Const_amu;
+
+      PRINT_WARNING( MU_NORM, FORMAT_FLT, "" );
+   }
+#  endif
+
+
 // AUTO_REDUCE_DT only works for DT_LEVEL_FLEXIBLE
    if ( AUTO_REDUCE_DT  &&  OPT__DT_LEVEL != DT_LEVEL_FLEXIBLE )
    {
@@ -950,6 +977,17 @@ void Init_ResetParameter()
 #  endif // #ifdef STAR_FORMATION
 
 
+// feedback options
+#  ifdef FEEDBACK
+   if ( FB_LEVEL < 0 )
+   {
+      FB_LEVEL = MAX_LEVEL;
+
+      PRINT_WARNING( FB_LEVEL, FORMAT_INT, "" );
+   }
+#  endif // #ifdef FEEDBACK
+
+
 // convert to code units
 #  ifdef STAR_FORMATION
 // SF_CREATE_STAR_MIN_GAS_DENS: HI count/cm^3 --> mass density in code units
@@ -994,6 +1032,36 @@ void Init_ResetParameter()
 
       PRINT_WARNING( OPT__RESET_FLUID_INIT, FORMAT_INT, "to match OPT__RESET_FLUID" );
    }
+
+
+// SERIAL doesn't support OPT__SORT_PATCH_BY_LBIDX
+#  ifdef SERIAL
+   if ( OPT__SORT_PATCH_BY_LBIDX )
+   {
+      OPT__SORT_PATCH_BY_LBIDX = false;
+
+      PRINT_WARNING( OPT__SORT_PATCH_BY_LBIDX, FORMAT_INT, "for SERIAL" );
+   }
+#  endif
+
+
+// must set OPT__FFTW_STARTUP = FFTW_STARTUP_ESTIMATE for BITWISE_REPRODUCIBILITY 
+// --> even when disabling BITWISE_REPRODUCIBILITY, we still use FFTW_STARTUP_ESTIMATE
+//     by default since otherwise the FFT results can vary in each run on the level
+//     of machine precision, which can be confusing
+#  ifdef SUPPORT_FFTW
+   if ( OPT__FFTW_STARTUP == FFTW_STARTUP_DEFAULT )
+   {
+#     ifdef BITWISE_REPRODUCIBILITY
+      OPT__FFTW_STARTUP = FFTW_STARTUP_ESTIMATE;
+      PRINT_WARNING( OPT__FFTW_STARTUP, FORMAT_INT, "when enabling BITWISE_REPRODUCIBILITY" );
+#     else
+//    OPT__FFTW_STARTUP = FFTW_STARTUP_MEASURE;
+      OPT__FFTW_STARTUP = FFTW_STARTUP_ESTIMATE;
+      PRINT_WARNING( OPT__FFTW_STARTUP, FORMAT_INT, "when disabling BITWISE_REPRODUCIBILITY" );
+#     endif
+   }
+#  endif
 
 
 // remove symbolic constants and macros only used in this structure

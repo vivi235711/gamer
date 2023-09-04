@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2458)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2470)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -220,18 +220,30 @@ Procedure for outputting new variables:
 //                2446 : 2022/05/10 --> output SUPPORT_LIBYT and LIBYT_USE_PATCH_GROUP
 //                2447 : 2022/05/11 --> output MASSIVE_PARTICLES, TRACER, PAR_NTYPE, GhostSizeTracer
 //                2448 : 2022/05/18 --> output PAR_IC_TYPE
-//                2449 : 2022/07/08 --> output OPT__OUTPUT_RESTART
-//                2450 : 2022/07/13 --> output OPT__INT_PRIM
-//                2451 : 2022/10/10 --> output OPT__SAME_INTERFACE_B
-//                2452 : 2022/10/17 --> output INTERP_MASK, OPT__CK_INPUT_FLUID
-//                2453 : 2022/10/20 --> output RSOLVER_RESCUE
-//                2454 : 2022/10/24 --> output AUTO_REDUCE_MINMOD_FACTOR, AUTO_REDUCE_MINMOD_MIN,
+//                2449 : 2021/03/21 --> output FEEDBACK
+//                2450 : 2021/03/21 --> output FB_LEVEL
+//                2451 : 2021/04/02 --> output FB_SNE and FB_USER
+//                2452 : 2021/04/03 --> output FB_RSEED
+//                2453 : 2022/07/08 --> output OPT__OUTPUT_RESTART
+//                2454 : 2022/07/13 --> output OPT__INT_PRIM
+//                2455 : 2022/10/10 --> output OPT__SAME_INTERFACE_B
+//                2456 : 2022/10/17 --> output INTERP_MASK, OPT__CK_INPUT_FLUID
+//                2457 : 2022/10/20 --> output RSOLVER_RESCUE
+//                2458 : 2022/10/24 --> output AUTO_REDUCE_MINMOD_FACTOR, AUTO_REDUCE_MINMOD_MIN,
 //                                             AUTO_REDUCE_INT_MONO_FACTOR, AUTO_REDUCE_INT_MONO_MIN,
 //                                             INT_MONO_COEFF_B
-//                2455 : 2022/11/04 --> output REFINE_NLEVEL
-//                2456 : 2022/12/15 --> output SUPPORT_FFTW
-//                2457 : 2023/01/28 --> output OPT__RESET_FLUID_INIT
-//                2458 : 2023/02/02 --> add OPT__RES_PHASE
+//                2459 : 2022/11/04 --> output REFINE_NLEVEL
+//                2460 : 2022/12/15 --> output SUPPORT_FFTW
+//                2461 : 2023/01/28 --> output OPT__RESET_FLUID_INIT
+//                2462 : 2023/03/19 --> output FB_GHOST_SIZE, FB_NXT
+//                2463 : 2023/03/20 --> output FB_SEP_FLUOUT
+//                2464 : 2023/04/27 --> output LIBYT_INTERACTIVE
+//                2465 : 2023/04/29 --> output MU_NORM
+//                2466 : 2023/02/02 --> output OPT__RES_PHASE
+//                2467 : 2023/02/07 --> output ELBDM_BASE_SPECTRAL
+//                2468 : 2023/05/08 --> output OPT__FFTW_STARTUP
+//                2469 : 2023/05/18 --> replace OPT__INIT_BFIELD_BYFILE by OPT__INIT_BFIELD_BYVECPOT
+//                2470 : 2023/06/24 --> output OPT__SORT_PATCH_BY_LBIDX
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -259,21 +271,21 @@ void Output_DumpData_Total_HDF5( const char *FileName )
    NFieldStored += NCOMP_TOTAL;
    if ( FluDumpIdx0+NCOMP_TOTAL-1 >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   for (int v=0; v<NCOMP_TOTAL; v++)   sprintf( FieldLabelOut[ FluDumpIdx0 + v ], FieldLabel[v] );
+   for (int v=0; v<NCOMP_TOTAL; v++)   sprintf( FieldLabelOut[ FluDumpIdx0 + v ], "%s", FieldLabel[v] );
 
 #  ifdef GRAVITY
    const int PotDumpIdx = ( OPT__OUTPUT_POT ) ? NFieldStored++ : -1;
    if ( PotDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_POT )  sprintf( FieldLabelOut[PotDumpIdx], PotLabel );
+   if ( OPT__OUTPUT_POT )  sprintf( FieldLabelOut[PotDumpIdx], "%s", PotLabel );
 #  endif
 
 #  ifdef MASSIVE_PARTICLES
    const int ParDensDumpIdx = ( OPT__OUTPUT_PAR_DENS != PAR_OUTPUT_DENS_NONE ) ? NFieldStored++ : -1;
    if ( ParDensDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if      ( OPT__OUTPUT_PAR_DENS == PAR_OUTPUT_DENS_PAR_ONLY )   sprintf( FieldLabelOut[ParDensDumpIdx], "ParDens"   );
-   else if ( OPT__OUTPUT_PAR_DENS == PAR_OUTPUT_DENS_TOTAL    )   sprintf( FieldLabelOut[ParDensDumpIdx], "TotalDens" );
+   if      ( OPT__OUTPUT_PAR_DENS == PAR_OUTPUT_DENS_PAR_ONLY )   sprintf( FieldLabelOut[ParDensDumpIdx], "%s", "ParDens"   );
+   else if ( OPT__OUTPUT_PAR_DENS == PAR_OUTPUT_DENS_TOTAL    )   sprintf( FieldLabelOut[ParDensDumpIdx], "%s", "TotalDens" );
 #  endif
 
 #  ifdef MHD
@@ -283,9 +295,9 @@ void Output_DumpData_Total_HDF5( const char *FileName )
    if ( OPT__OUTPUT_CC_MAG )
    {
       NFieldStored += NCOMP_MAG;
-      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGX ], "CCMagX" );
-      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGY ], "CCMagY" );
-      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGZ ], "CCMagZ" );
+      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGX ], "%s", "CCMagX" );
+      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGY ], "%s", "CCMagY" );
+      sprintf( FieldLabelOut[ CCMagDumpIdx0 + MAGZ ], "%s", "CCMagZ" );
    }
 #  endif
 
@@ -293,39 +305,39 @@ void Output_DumpData_Total_HDF5( const char *FileName )
    const int PresDumpIdx   = ( OPT__OUTPUT_PRES   ) ? NFieldStored++ : -1;
    if ( PresDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_PRES   )  sprintf( FieldLabelOut[PresDumpIdx  ], "Pres"   );
+   if ( OPT__OUTPUT_PRES   )  sprintf( FieldLabelOut[PresDumpIdx  ], "%s", "Pres"   );
 
    const int TempDumpIdx   = ( OPT__OUTPUT_TEMP   ) ? NFieldStored++ : -1;
    if ( TempDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_TEMP   )  sprintf( FieldLabelOut[TempDumpIdx  ], "Temp"   );
+   if ( OPT__OUTPUT_TEMP   )  sprintf( FieldLabelOut[TempDumpIdx  ], "%s", "Temp"   );
 
    const int EntrDumpIdx   = ( OPT__OUTPUT_ENTR   ) ? NFieldStored++ : -1;
    if ( EntrDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_ENTR   )  sprintf( FieldLabelOut[EntrDumpIdx  ], "Entr"   );
+   if ( OPT__OUTPUT_ENTR   )  sprintf( FieldLabelOut[EntrDumpIdx  ], "%s", "Entr"   );
 
    const int CsDumpIdx     = ( OPT__OUTPUT_CS     ) ? NFieldStored++ : -1;
    if ( CsDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_CS     )  sprintf( FieldLabelOut[CsDumpIdx    ], "Cs"     );
+   if ( OPT__OUTPUT_CS     )  sprintf( FieldLabelOut[CsDumpIdx    ], "%s", "Cs"     );
 
    const int DivVelDumpIdx = ( OPT__OUTPUT_DIVVEL ) ? NFieldStored++ : -1;
    if ( DivVelDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_DIVVEL )  sprintf( FieldLabelOut[DivVelDumpIdx], "DivVel" );
+   if ( OPT__OUTPUT_DIVVEL )  sprintf( FieldLabelOut[DivVelDumpIdx], "%s", "DivVel" );
 
    const int MachDumpIdx   = ( OPT__OUTPUT_MACH   ) ? NFieldStored++ : -1;
    if ( MachDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_MACH   )  sprintf( FieldLabelOut[MachDumpIdx  ], "Mach"   );
+   if ( OPT__OUTPUT_MACH   )  sprintf( FieldLabelOut[MachDumpIdx  ], "%s", "Mach"   );
 #  endif
 
 #  ifdef MHD
    const int DivMagDumpIdx = ( OPT__OUTPUT_DIVMAG ) ? NFieldStored++ : -1;
    if ( DivMagDumpIdx >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
-   if ( OPT__OUTPUT_DIVMAG )  sprintf( FieldLabelOut[DivMagDumpIdx], "DivMag" );
+   if ( OPT__OUTPUT_DIVMAG )  sprintf( FieldLabelOut[DivMagDumpIdx], "%s", "DivMag" );
 #  endif
 
    const int UserDumpIdx0 = ( OPT__OUTPUT_USER_FIELD ) ? NFieldStored : -1;
@@ -334,7 +346,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
    if ( OPT__OUTPUT_USER_FIELD )
    {
       NFieldStored += UserDerField_Num;
-      for (int v=0; v<UserDerField_Num; v++)    sprintf( FieldLabelOut[ UserDumpIdx0 + v ], UserDerField_Label[v] );
+      for (int v=0; v<UserDerField_Num; v++)    sprintf( FieldLabelOut[ UserDumpIdx0 + v ], "%s", UserDerField_Label[v] );
    }
 
 
@@ -1287,7 +1299,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
 //    7-1. validate the father-son relation
 //    7-1-1. load data
       char SetName[MAX_STRING];
-      sprintf( SetName, "Tree/Father" );
+      sprintf( SetName, "%s", "Tree/Father" );
       H5_SetID_Fa = H5Dopen( H5_FileID, SetName, H5P_DEFAULT );
 
       if ( H5_SetID_Fa < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", SetName );
@@ -1295,7 +1307,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
       H5_Status = H5Dread( H5_SetID_Fa, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, gel.FaList_AllLv );
       H5_Status = H5Dclose( H5_SetID_Fa );
 
-      sprintf( SetName, "Tree/Son" );
+      sprintf( SetName, "%s", "Tree/Son" );
       H5_SetID_Son = H5Dopen( H5_FileID, SetName, H5P_DEFAULT );
 
       if ( H5_SetID_Son < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", SetName );
@@ -1303,7 +1315,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
       H5_Status = H5Dread( H5_SetID_Son, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, gel.SonList_AllLv );
       H5_Status = H5Dclose( H5_SetID_Son );
 
-      sprintf( SetName, "Tree/Sibling" );
+      sprintf( SetName, "%s", "Tree/Sibling" );
       H5_SetID_Sib = H5Dopen( H5_FileID, SetName, H5P_DEFAULT );
 
       if ( H5_SetID_Sib < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", SetName );
@@ -1405,7 +1417,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo, const int NFieldStored )
 
    const time_t CalTime = time( NULL );   // calendar time
 
-   KeyInfo.FormatVersion        = 2458;
+   KeyInfo.FormatVersion        = 2470;
    KeyInfo.Model                = MODEL;
    KeyInfo.NLevel               = NLEVEL;
    KeyInfo.NCompFluid           = NCOMP_FLUID;
@@ -1597,24 +1609,29 @@ void FillIn_Makefile( Makefile_t &Makefile )
 #  endif
 
 #  ifdef SUPPORT_FFTW
-   Makefile.SupportFFTW            = 1;
+   Makefile.SupportFFTW            = SUPPORT_FFTW;
 #  else
    Makefile.SupportFFTW            = 0;
 #  endif
 
 #  ifdef SUPPORT_LIBYT
    Makefile.SupportLibYT           = 1;
-#  else
-   Makefile.SupportLibYT           = 0;
-#  endif
 
-#  ifdef SUPPORT_LIBYT
 #  ifdef LIBYT_USE_PATCH_GROUP
    Makefile.LibYTUsePatchGroup     = 1;
 #  else
    Makefile.LibYTUsePatchGroup     = 0;
 #  endif
-#  endif // #ifdef SUPPORT_LIBYT
+
+#  ifdef LIBYT_INTERACTIVE
+   Makefile.LibYTInteractive       = 1;
+#  else
+   Makefile.LibYTInteractive       = 0;
+#  endif
+
+#  else  // #ifdef SUPPORT_LIBYT
+   Makefile.SupportLibYT           = 0;
+#  endif // #ifdef SUPPORT_LIBYT ... else ...
 
 #  ifdef SUPPORT_GRACKLE
    Makefile.SupportGrackle         = 1;
@@ -1729,6 +1746,12 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.StarFormation          = 1;
 #  else
    Makefile.StarFormation          = 0;
+#  endif
+
+#  ifdef FEEDBACK
+   Makefile.Feedback               = 1;
+#  else
+   Makefile.Feedback               = 0;
 #  endif
 
    Makefile.Par_NAttUser           = PAR_NATT_USER;
@@ -1869,6 +1892,12 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.InterpMask           = 0;
 #  endif
 
+#  ifdef FB_SEP_FLUOUT
+   SymConst.FB_SepFluOut         = 1;
+#  else
+   SymConst.FB_SepFluOut         = 0;
+#  endif
+
 
 #  if   ( MODEL == HYDRO )
    SymConst.Flu_BlockSize_x      = FLU_BLOCK_SIZE_X;
@@ -1965,6 +1994,11 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.Der_GhostSize        = DER_GHOST_SIZE;
    SymConst.Der_Nxt              = DER_NXT;
    SymConst.Der_NOut_Max         = DER_NOUT_MAX;
+
+#  ifdef FEEDBACK
+   SymConst.FB_GhostSize         = FB_GHOST_SIZE;
+   SymConst.FB_Nxt               = FB_NXT;
+#  endif
 
    SymConst.NFieldStoredMax      = NFIELD_STORED_MAX;
 
@@ -2140,6 +2174,7 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
 #  if ( MODEL == HYDRO )
    InputPara.Gamma                   = GAMMA;
    InputPara.MolecularWeight         = MOLECULAR_WEIGHT;
+   InputPara.MuNorm                  = MU_NORM;
    InputPara.IsoTemp                 = ISO_TEMP;
    InputPara.MinMod_Coeff            = MINMOD_COEFF;
    InputPara.MinMod_MaxIter          = MINMOD_MAX_ITER;
@@ -2164,6 +2199,7 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.ELBDM_Taylor3_Coeff     = ELBDM_TAYLOR3_COEFF;
    InputPara.ELBDM_Taylor3_Auto      = ELBDM_TAYLOR3_AUTO;
    InputPara.ELBDM_RemoveMotionCM    = ELBDM_REMOVE_MOTION_CM;
+   InputPara.ELBDM_BaseSpectral      = ELBDM_BASE_SPECTRAL;
 #  endif // ELBDM
 
 // fluid solvers in different models
@@ -2280,6 +2316,14 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.SF_CreateStar_MaxStarMFrac = SF_CREATE_STAR_MAX_STAR_MFRAC;
 #  endif
 
+// feedback
+#  ifdef FEEDBACK
+   InputPara.FB_Level                = FB_LEVEL;
+   InputPara.FB_RSeed                = FB_RSEED;
+   InputPara.FB_SNe                  = FB_SNE;
+   InputPara.FB_User                 = FB_USER;
+#  endif
+
 // initialization
    InputPara.Opt__Init               = OPT__INIT;
    InputPara.RestartLoadNRank        = RESTART_LOAD_NRANK;
@@ -2316,9 +2360,11 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.Opt__GPUID_Select       = OPT__GPUID_SELECT;
    InputPara.Init_Subsampling_NCell  = INIT_SUBSAMPLING_NCELL;
 #  ifdef MHD
-   InputPara.Opt__InitBFieldByFile   = OPT__INIT_BFIELD_BYFILE;
+   InputPara.Opt__InitBFieldByVecPot = OPT__INIT_BFIELD_BYVECPOT;
 #  endif
-
+#  ifdef SUPPORT_FFTW
+   InputPara.Opt__FFTW_Startup       = OPT__FFTW_STARTUP;
+#  endif
 // interpolation schemes
    InputPara.Opt__Int_Time           = OPT__INT_TIME;
 #  if ( MODEL == HYDRO )
@@ -2398,6 +2444,7 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.Opt__ManualControl      = OPT__MANUAL_CONTROL;
    InputPara.Opt__RecordUser         = OPT__RECORD_USER;
    InputPara.Opt__OptimizeAggressive = OPT__OPTIMIZE_AGGRESSIVE;
+   InputPara.Opt__SortPatchByLBIdx   = OPT__SORT_PATCH_BY_LBIDX;
 
 // simulation checks
    InputPara.Opt__Ck_Refine          = OPT__CK_REFINE;
@@ -2601,6 +2648,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "SupportLibYT",           HOFFSET(Makefile_t,SupportLibYT           ), H5T_NATIVE_INT );
 #  ifdef SUPPORT_LIBYT
    H5Tinsert( H5_TypeID, "LibYTUsePatchGroup",     HOFFSET(Makefile_t,LibYTUsePatchGroup     ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "LibYTInteractive",       HOFFSET(Makefile_t,LibYTInteractive       ), H5T_NATIVE_INT );
 #  endif
    H5Tinsert( H5_TypeID, "SupportGrackle",         HOFFSET(Makefile_t,SupportGrackle         ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "RandomNumber",           HOFFSET(Makefile_t,RandomNumber           ), H5T_NATIVE_INT );
@@ -2642,6 +2690,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Tracer",                 HOFFSET(Makefile_t,Tracer                 ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "StoreParAcc",            HOFFSET(Makefile_t,StoreParAcc            ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "StarFormation",          HOFFSET(Makefile_t,StarFormation          ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "Feedback",               HOFFSET(Makefile_t,Feedback               ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "Par_NAttUser",           HOFFSET(Makefile_t,Par_NAttUser           ), H5T_NATIVE_INT );
 #  endif
 
@@ -2732,6 +2781,7 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "BitRep_Electric",      HOFFSET(SymConst_t,BitRep_Electric     ), H5T_NATIVE_INT    );
 #  endif
    H5Tinsert( H5_TypeID, "InterpMask",           HOFFSET(SymConst_t,InterpMask          ), H5T_NATIVE_INT    );
+   H5Tinsert( H5_TypeID, "FB_SepFluOut",         HOFFSET(SymConst_t,FB_SepFluOut        ), H5T_NATIVE_INT    );
 
 #  if   ( MODEL == HYDRO )
    H5Tinsert( H5_TypeID, "Flu_BlockSize_x",      HOFFSET(SymConst_t,Flu_BlockSize_x     ), H5T_NATIVE_INT    );
@@ -2788,6 +2838,11 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Der_GhostSize",        HOFFSET(SymConst_t,Der_GhostSize       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "Der_Nxt",              HOFFSET(SymConst_t,Der_Nxt             ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "Der_NOut_Max",         HOFFSET(SymConst_t,Der_NOut_Max        ), H5T_NATIVE_INT    );
+
+#  ifdef FEEDBACK
+   H5Tinsert( H5_TypeID, "FB_GhostSize",         HOFFSET(SymConst_t,FB_GhostSize        ), H5T_NATIVE_INT    );
+   H5Tinsert( H5_TypeID, "FB_Nxt",               HOFFSET(SymConst_t,FB_Nxt              ), H5T_NATIVE_INT    );
+#  endif
 
    H5Tinsert( H5_TypeID, "NFieldStoredMax",      HOFFSET(SymConst_t,NFieldStoredMax     ), H5T_NATIVE_INT    );
 
@@ -3016,6 +3071,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
 #  if ( MODEL == HYDRO )
    H5Tinsert( H5_TypeID, "Gamma",                   HOFFSET(InputPara_t,Gamma                  ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "MolecularWeight",         HOFFSET(InputPara_t,MolecularWeight        ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "MuNorm",                  HOFFSET(InputPara_t,MuNorm                 ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "IsoTemp",                 HOFFSET(InputPara_t,IsoTemp                ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "MinMod_Coeff",            HOFFSET(InputPara_t,MinMod_Coeff           ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "MinMod_MaxIter",          HOFFSET(InputPara_t,MinMod_MaxIter         ), H5T_NATIVE_INT     );
@@ -3040,6 +3096,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "ELBDM_Taylor3_Coeff",     HOFFSET(InputPara_t,ELBDM_Taylor3_Coeff    ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "ELBDM_Taylor3_Auto",      HOFFSET(InputPara_t,ELBDM_Taylor3_Auto     ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "ELBDM_RemoveMotionCM",    HOFFSET(InputPara_t,ELBDM_RemoveMotionCM   ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "ELBDM_BaseSpectral",      HOFFSET(InputPara_t,ELBDM_BaseSpectral     ), H5T_NATIVE_INT     );
 #  endif // ELBDM
 
 // fluid solvers in different models
@@ -3163,26 +3220,37 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "SF_CreateStar_MaxStarMFrac", HOFFSET(InputPara_t,SF_CreateStar_MaxStarMFrac ), H5T_NATIVE_DOUBLE    );
 #  endif
 
-// initialization
-   H5Tinsert( H5_TypeID, "Opt__Init",               HOFFSET(InputPara_t,Opt__Init              ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "RestartLoadNRank",        HOFFSET(InputPara_t,RestartLoadNRank       ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__RestartReset",       HOFFSET(InputPara_t,Opt__RestartReset      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_Level",        HOFFSET(InputPara_t,Opt__UM_IC_Level       ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_NLevel",       HOFFSET(InputPara_t,Opt__UM_IC_NLevel      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_NVar",         HOFFSET(InputPara_t,Opt__UM_IC_NVar        ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_Format",       HOFFSET(InputPara_t,Opt__UM_IC_Format      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_Downgrade",    HOFFSET(InputPara_t,Opt__UM_IC_Downgrade   ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_Refine",       HOFFSET(InputPara_t,Opt__UM_IC_Refine      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__UM_IC_LoadNRank",    HOFFSET(InputPara_t,Opt__UM_IC_LoadNRank   ), H5T_NATIVE_INT              );
-#  if ( NLEVEL > 1 )
-   H5Tinsert( H5_TypeID, "UM_IC_RefineRegion",      HOFFSET(InputPara_t,UM_IC_RefineRegion     ), H5_TypeID_Arr_NLvM1_6Int    );
+// feedback
+#  ifdef FEEDBACK
+   H5Tinsert( H5_TypeID, "FB_Level",                HOFFSET(InputPara_t,FB_Level               ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "FB_RSeed",                HOFFSET(InputPara_t,FB_RSeed               ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "FB_SNe",                  HOFFSET(InputPara_t,FB_SNe                 ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "FB_User",                 HOFFSET(InputPara_t,FB_User                ), H5T_NATIVE_INT              );
 #  endif
-   H5Tinsert( H5_TypeID, "Opt__InitRestrict",       HOFFSET(InputPara_t,Opt__InitRestrict      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__InitGridWithOMP",    HOFFSET(InputPara_t,Opt__InitGridWithOMP   ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__GPUID_Select",       HOFFSET(InputPara_t,Opt__GPUID_Select      ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Init_Subsampling_NCell",  HOFFSET(InputPara_t,Init_Subsampling_NCell ), H5T_NATIVE_INT              );
+
+// initialization
+   H5Tinsert( H5_TypeID, "Opt__Init",               HOFFSET(InputPara_t,Opt__Init               ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "RestartLoadNRank",        HOFFSET(InputPara_t,RestartLoadNRank        ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__RestartReset",       HOFFSET(InputPara_t,Opt__RestartReset       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_Level",        HOFFSET(InputPara_t,Opt__UM_IC_Level        ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_NLevel",       HOFFSET(InputPara_t,Opt__UM_IC_NLevel       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_NVar",         HOFFSET(InputPara_t,Opt__UM_IC_NVar         ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_Format",       HOFFSET(InputPara_t,Opt__UM_IC_Format       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_Downgrade",    HOFFSET(InputPara_t,Opt__UM_IC_Downgrade    ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_Refine",       HOFFSET(InputPara_t,Opt__UM_IC_Refine       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__UM_IC_LoadNRank",    HOFFSET(InputPara_t,Opt__UM_IC_LoadNRank    ), H5T_NATIVE_INT              );
+#  if ( NLEVEL > 1 )
+   H5Tinsert( H5_TypeID, "UM_IC_RefineRegion",      HOFFSET(InputPara_t,UM_IC_RefineRegion      ), H5_TypeID_Arr_NLvM1_6Int    );
+#  endif
+   H5Tinsert( H5_TypeID, "Opt__InitRestrict",       HOFFSET(InputPara_t,Opt__InitRestrict       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__InitGridWithOMP",    HOFFSET(InputPara_t,Opt__InitGridWithOMP    ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__GPUID_Select",       HOFFSET(InputPara_t,Opt__GPUID_Select       ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Init_Subsampling_NCell",  HOFFSET(InputPara_t,Init_Subsampling_NCell  ), H5T_NATIVE_INT              );
 #  ifdef MHD
-   H5Tinsert( H5_TypeID, "Opt__InitBFieldByFile",   HOFFSET(InputPara_t,Opt__InitBFieldByFile  ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__InitBFieldByVecPot", HOFFSET(InputPara_t,Opt__InitBFieldByVecPot ), H5T_NATIVE_INT              );
+#  endif
+#  ifdef SUPPORT_FFTW
+   H5Tinsert( H5_TypeID, "Opt__FFTW_Startup",       HOFFSET(InputPara_t,Opt__FFTW_Startup       ), H5T_NATIVE_INT              );
 #  endif
 
 // interpolation schemes
@@ -3264,6 +3332,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "Opt__ManualControl",      HOFFSET(InputPara_t,Opt__ManualControl     ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__RecordUser",         HOFFSET(InputPara_t,Opt__RecordUser        ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__OptimizeAggressive", HOFFSET(InputPara_t,Opt__OptimizeAggressive), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__SortPatchByLBIdx",   HOFFSET(InputPara_t,Opt__SortPatchByLBIdx  ), H5T_NATIVE_INT              );
 
 // simulation checks
    H5Tinsert( H5_TypeID, "Opt__Ck_Refine",          HOFFSET(InputPara_t,Opt__Ck_Refine         ), H5T_NATIVE_INT              );

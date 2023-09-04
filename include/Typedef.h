@@ -22,6 +22,11 @@ typedef double real;
 typedef float  real;
 #endif
 
+#ifdef GRAMFE_FLOAT8
+typedef double gramfe_float;
+#else
+typedef float  gramfe_float;
+#endif
 
 // short names for unsigned type
 typedef unsigned short     ushort;
@@ -52,6 +57,7 @@ const TestProbID_t
    TESTPROB_HYDRO_JEANS_INSTABILITY            =   16,
    TESTPROB_HYDRO_PARTICLE_EQUILIBRIUM_IC      =   17,
    TESTPROB_HYDRO_PARTICLE_TEST                =   18,
+   TESTPROB_HYDRO_ENERGY_POWER_SPECTRUM        =   19,
    TESTPROB_HYDRO_BARRED_POT                   =   51,
    TESTPROB_HYDRO_CDM_LSS                      =  100,
    TESTPROB_HYDRO_ZELDOVICH                    =  101,
@@ -78,6 +84,14 @@ const OptInit_t
    INIT_BY_FILE     = 3;
 
 
+// program initialization options for the magnetic field by vector potential
+typedef int OptInitMagByVecPot_t;
+const OptInitMagByVecPot_t
+   INIT_MAG_BYVECPOT_NONE = 0,
+   INIT_MAG_BYVECPOT_FILE = 1,
+   INIT_MAG_BYVECPOT_FUNC = 2;
+
+
 // data format for OPT__INIT=INIT_BY_FILE
 typedef int UM_IC_Format_t;
 const UM_IC_Format_t
@@ -92,6 +106,15 @@ const ParICFormat_t
    PAR_IC_FORMAT_NONE   = 0,
    PAR_IC_FORMAT_ATT_ID = 1,
    PAR_IC_FORMAT_ID_ATT = 2;
+
+
+// FFTW startup options
+typedef int FFTWStartup_t;
+const FFTWStartup_t
+   FFTW_STARTUP_DEFAULT  = -1,
+   FFTW_STARTUP_ESTIMATE = 0,
+   FFTW_STARTUP_MEASURE  = 1,
+   FFTW_STARTUP_PATIENT  = 2;
 
 
 // program restart options

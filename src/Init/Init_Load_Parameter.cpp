@@ -185,7 +185,7 @@ void Init_Load_Parameter()
 #  endif
    ReadPara->Add( "OPT__RECORD_LOAD_BALANCE",   &OPT__RECORD_LOAD_BALANCE,        true,            Useless_bool,  Useless_bool   );
 #  endif
-   ReadPara->Add( "OPT__MINIMIZE_MPI_BARRIER",  &OPT__MINIMIZE_MPI_BARRIER,       true,            Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__MINIMIZE_MPI_BARRIER",  &OPT__MINIMIZE_MPI_BARRIER,       false,           Useless_bool,  Useless_bool   );
 
 
 // source terms
@@ -229,6 +229,15 @@ void Init_Load_Parameter()
 #  endif
 
 
+// feedback
+#  ifdef FEEDBACK
+   ReadPara->Add( "FB_LEVEL",                   &FB_LEVEL,                       -1,               NoMin_int,     TOP_LEVEL      );
+   ReadPara->Add( "FB_RSEED",                   &FB_RSEED,                        456,             0,             NoMax_int      );
+   ReadPara->Add( "FB_SNE",                     &FB_SNE,                          false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "FB_USER",                    &FB_USER,                         false,           Useless_bool,  Useless_bool   );
+#  endif
+
+
 // fluid solvers in HYDRO
 #  if ( MODEL == HYDRO )
 #  if ( EOS == EOS_GAMMA )
@@ -237,6 +246,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "GAMMA",                      &GAMMA,                           __DBL_MAX__,     NoMin_double,  NoMax_double   );
 #  endif
    ReadPara->Add( "MOLECULAR_WEIGHT",           &MOLECULAR_WEIGHT,                0.6,             Eps_double,    NoMax_double   );
+   ReadPara->Add( "MU_NORM",                    &MU_NORM,                        -1.0,             NoMin_double,  NoMax_double   );
 #  if ( EOS == EOS_ISOTHERMAL )
    ReadPara->Add( "ISO_TEMP",                   &ISO_TEMP,                       -1.0,             Eps_double,    NoMax_double   );
 #  else
@@ -271,6 +281,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "ELBDM_TAYLOR3_COEFF",        &ELBDM_TAYLOR3_COEFF,             1.0/6.0,         NoMin_double,  NoMax_double   );
    ReadPara->Add( "ELBDM_TAYLOR3_AUTO",         &ELBDM_TAYLOR3_AUTO,              false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "ELBDM_REMOVE_MOTION_CM",     &ELBDM_REMOVE_MOTION_CM,          ELBDM_REMOVE_MOTION_CM_NONE, 0, 2              );
+   ReadPara->Add( "ELBDM_BASE_SPECTRAL",        &ELBDM_BASE_SPECTRAL,             false,           Useless_bool,  Useless_bool   );
 #  endif // #if ( MODEL == ELBDM )
 
 
@@ -278,7 +289,11 @@ void Init_Load_Parameter()
 // do not check FLU_GPU_NPGROUP and GPU_NSTREAM since they may be reset by either Init_ResetDefaultParameter() or CUAPI_SetMemSize()
    ReadPara->Add( "FLU_GPU_NPGROUP",            &FLU_GPU_NPGROUP,                -1,               NoMin_int,     NoMax_int      );
    ReadPara->Add( "GPU_NSTREAM",                &GPU_NSTREAM,                    -1,               NoMin_int,     NoMax_int      );
+#  if ( MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE )
+   ReadPara->Add( "OPT__FIXUP_FLUX",            &OPT__FIXUP_FLUX,                 false,           Useless_bool,  Useless_bool   );
+#  else // #  if ( MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE )
    ReadPara->Add( "OPT__FIXUP_FLUX",            &OPT__FIXUP_FLUX,                 true,            Useless_bool,  Useless_bool   );
+#  endif // #  if ( MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE ) ... # else
 #  ifdef MHD
    ReadPara->Add( "OPT__FIXUP_ELECTRIC",        &OPT__FIXUP_ELECTRIC,             true,            Useless_bool,  Useless_bool   );
 #  endif
@@ -367,8 +382,17 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__GPUID_SELECT",          &OPT__GPUID_SELECT,              -1,              -3,             NoMax_int      );
    ReadPara->Add( "INIT_SUBSAMPLING_NCELL",     &INIT_SUBSAMPLING_NCELL,          0,               0,             NoMax_int      );
 #  ifdef MHD
-   ReadPara->Add( "OPT__INIT_BFIELD_BYFILE",    &OPT__INIT_BFIELD_BYFILE,         false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__INIT_BFIELD_BYVECPOT", &OPT__INIT_BFIELD_BYVECPOT, INIT_MAG_BYVECPOT_NONE, 0,             2              );
 #  endif
+#  ifdef SUPPORT_FFTW
+#  if ( SUPPORT_FFTW == FFTW2 )
+   ReadPara->Add( "OPT__FFTW_STARTUP",     &OPT__FFTW_STARTUP, FFTW_STARTUP_DEFAULT, FFTW_STARTUP_DEFAULT, FFTW_STARTUP_MEASURE );
+#  elif ( SUPPORT_FFTW == FFTW3 ) // #  if ( SUPPORT_FFTW == FFTW2 )
+   ReadPara->Add( "OPT__FFTW_STARTUP",     &OPT__FFTW_STARTUP, FFTW_STARTUP_DEFAULT, FFTW_STARTUP_DEFAULT, FFTW_STARTUP_PATIENT );
+#  else  // # if ( SUPPORT_FFTW == FFTW2 ) ... # else
+#  error : ERROR : Unsupported FFTW version for OPT__FFTW_STARTUP
+#  endif // #  if ( SUPPORT_FFTW == FFTW2 ) ... # else
+#  endif // # ifdef SUPPORT_FFTW
 
 // interpolation schemes
    ReadPara->Add( "OPT__INT_TIME",              &OPT__INT_TIME,                   true,            Useless_bool,  Useless_bool   );
@@ -471,6 +495,11 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__MANUAL_CONTROL",        &OPT__MANUAL_CONTROL,             true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__RECORD_USER",           &OPT__RECORD_USER,                false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__OPTIMIZE_AGGRESSIVE",   &OPT__OPTIMIZE_AGGRESSIVE,        false,           Useless_bool,  Useless_bool   );
+#  ifdef LOAD_BALANCE
+   ReadPara->Add( "OPT__SORT_PATCH_BY_LBIDX",   &OPT__SORT_PATCH_BY_LBIDX,        true,            Useless_bool,  Useless_bool   );
+#  else
+   ReadPara->Add( "OPT__SORT_PATCH_BY_LBIDX",   &OPT__SORT_PATCH_BY_LBIDX,        false,           Useless_bool,  Useless_bool   );
+#  endif
 
 
 // simulation checks

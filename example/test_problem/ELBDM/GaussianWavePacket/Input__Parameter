@@ -80,7 +80,7 @@ OPT__MEMORY_POOL              0           # preallocate patches for OPT__REUSE_M
 LB_INPUT__WLI_MAX             0.1         # weighted-load-imbalance (WLI) threshold for redistributing all patches [0.1]
 LB_INPUT__PAR_WEIGHT          0.0         # load-balance weighting of one particle over one cell [0.0]
 OPT__RECORD_LOAD_BALANCE      1           # record the load-balance info [1]
-OPT__MINIMIZE_MPI_BARRIER     1           # minimize MPI barriers to improve load balance, especially with particles [1]
+OPT__MINIMIZE_MPI_BARRIER     0           # minimize MPI barriers to improve load balance, especially with particles [0]
                                           # (STORE_POT_GHOST, PAR_IMPROVE_ACC=1, OPT__TIMING_BARRIER=0 only; recommend AUTO_REDUCE_DT=0)
 
 # fluid solver in ELBDM (MODEL==ELBDM only)
@@ -91,6 +91,7 @@ ELBDM_TAYLOR3_COEFF           0.166666667 # 3rd Taylor expansion coefficient [1.
 ELBDM_TAYLOR3_AUTO            0           # Optimize ELBDM_TAYLOR3_COEFF automatically to minimize the damping at kmax [0]
 ELBDM_REMOVE_MOTION_CM        0           # remove the motion of center-of-mass (must enable OPT__CK_CONSERVATION):
                                           # (0=off, 1=init, 2=every step) [0]
+ELBDM_BASE_SPECTRAL           0           # adopt the spectral method to evolve base-level wave function (must enable SUPPORT_FFTW) [0]
 
 
 # fluid solvers in all models
