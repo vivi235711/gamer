@@ -26,9 +26,9 @@
 
 
 // include CUDA FFT library if GPU kinetic ELBDM Gram-Fourier extension solver is enabled
-#if ( defined(__CUDACC__) && MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_ENABLE_GPU )
+#if ( defined(__CUDACC__) && GRAMFE_SCHEME == GRAMFE_FFT )
 #  include <cufftdx.hpp>
-#endif // #if ( defined(__CUDACC__) && MODEL == ELBDM && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_ENABLE_GPU )
+#endif // #if ( defined(__CUDACC__) && GRAMFE_SCHEME == GRAMFE_FFT )
 
 // faster integer multiplication in Fermi
 #if ( defined __CUDACC__  &&  __CUDA_ARCH__ >= 200 )
@@ -280,6 +280,13 @@
 #  define HLLD_WAVESPEED   HLL_WAVESPEED_DAVIS
 
 
+// check unphysical results in the MHM half-step prediction
+#if ( FLU_SCHEME == MHM )
+#  define MHM_CHECK_PREDICT
+#endif
+
+
+
 // 2. ELBDM macro
 //=========================================================================================
 #elif ( MODEL == ELBDM )
@@ -487,8 +494,9 @@
 #  endif
 
 
+
 // set number of threads and blocks used in GRAMFE GPU scheme
-# if ( defined(__CUDACC__) && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_ENABLE_GPU )
+# if ( defined(__CUDACC__) && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_SCHEME == GRAMFE_FFT )
 
 
 // cuFFTdx supports the following GPU architectures at the time of writing (23.05.23)
@@ -519,7 +527,7 @@
 
 using CUFFTDX_ARCH = decltype(cufftdx::SM<GPU_COMPUTE_CAPABILITY>());
 
-using fft_base     = decltype(cufftdx::Block() + cufftdx::Size<GRAMFE_FLU_NXT>() + cufftdx::Type<cufftdx::fft_type::c2c>() + cufftdx::Precision<gramfe_float>() + CUFFTDX_ARCH() );
+using fft_base     = decltype(cufftdx::Block() + cufftdx::Size<GRAMFE_FLU_NXT>() + cufftdx::Type<cufftdx::fft_type::c2c>() + cufftdx::Precision<gramfe_fft_float>() + CUFFTDX_ARCH() );
 using forward_fft  = decltype(fft_base() + cufftdx::Direction<cufftdx::fft_direction::forward>());
 using inverse_fft  = decltype(fft_base() + cufftdx::Direction<cufftdx::fft_direction::inverse>());
 
@@ -532,7 +540,7 @@ using IFFT         = decltype( inverse_fft() + cufftdx::ElementsPerThread<elemen
 
 using complex_type = typename FFT::value_type;
 
-# endif // # if ( defined(__CUDACC__) && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_ENABLE_GPU )
+# endif // # if ( defined(__CUDACC__) && WAVE_SCHEME == WAVE_GRAMFE && GRAMFE_SCHEME == GRAMFE_FFT )
 
 # else
 # error : ERROR : Unsupported model in CUFLU.h
