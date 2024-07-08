@@ -14,6 +14,7 @@
 # include "Typedef.h"
 # include "SrcTerms.h"
 # include "EoS.h"
+# include "Microphysics.h"
 #else
 # include "GAMER.h"
 #endif
@@ -278,6 +279,13 @@
 //#  define HLLE_WAVESPEED   HLL_WAVESPEED_PVRS
 #endif
 #  define HLLD_WAVESPEED   HLL_WAVESPEED_DAVIS
+
+
+// check unphysical results in the MHM half-step prediction
+#if ( FLU_SCHEME == MHM )
+#  define MHM_CHECK_PREDICT
+#endif
+
 
 
 // 2. ELBDM macro
