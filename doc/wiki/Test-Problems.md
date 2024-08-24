@@ -7,63 +7,63 @@ The workflow is triggered by push changes to any of `src/Init/Init_Load_Paramete
 
 For now, see the demos in [[Quick Start]]. More detailed descriptions of other test problems will be added soon.
 The source codes of all test problems are put in `src/TestProblem` and the corresponding input files are put in `example/test_problem`.
-[Template](Test-Problems:-Template.md)
+[[ Template \| Test-Problems:-Template.md ]]
 
 # ELBDM
-[ExtPot](Test-Problems:-ExtPot.md)
+[[ ExtPot \| Test-Problems:-ExtPot.md ]]
 
 
 # Hydro
-[AGORA_IsolatedGalaxy](Test-Problems:-AGORA_IsolatedGalaxy.md)
+[[ AGORA_IsolatedGalaxy \| Test-Problems:-AGORA_IsolatedGalaxy.md ]]
 
-[AcousticWave](Test-Problems:-AcousticWave.md)
+[[ AcousticWave \| Test-Problems:-AcousticWave.md ]]
 
-[BlastWave](Test-Problems:-BlastWave.md)
+[[ BlastWave \| Test-Problems:-BlastWave.md ]]
 
-[Bondi](Test-Problems:-Bondi.md)
+[[ Bondi \| Test-Problems:-Bondi.md ]]
 
-[CDM_LSS](Test-Problems:-CDM_LSS.md)
+[[ CDM_LSS \| Test-Problems:-CDM_LSS.md ]]
 
-[CMZ](Test-Problems:-CMZ.md)
+[[ CMZ \| Test-Problems:-CMZ.md ]]
 
-[Caustic](Test-Problems:-Caustic.md)
+[[ Caustic \| Test-Problems:-Caustic.md ]]
 
-[ClusterMerger](Test-Problems:-ClusterMerger.md)
+[[ ClusterMerger \| Test-Problems:-ClusterMerger.md ]]
 
-[EnergyPowerSpectrum](Test-Problems:-EnergyPowerSpectrum.md)
+[[ EnergyPowerSpectrum \| Test-Problems:-EnergyPowerSpectrum.md ]]
 
-[Gravity](Test-Problems:-Gravity.md)
+[[ Gravity \| Test-Problems:-Gravity.md ]]
 
-[JeansInstability](Test-Problems:-JeansInstability.md)
+[[ JeansInstability \| Test-Problems:-JeansInstability.md ]]
 
-[Jet](Test-Problems:-Jet.md)
+[[ Jet \| Test-Problems:-Jet.md ]]
 
-[KelvinHelmholtzInstability](Test-Problems:-KelvinHelmholtzInstability.md)
+[[ KelvinHelmholtzInstability \| Test-Problems:-KelvinHelmholtzInstability.md ]]
 
-[MHD_ABC](Test-Problems:-MHD_ABC.md)
+[[ MHD_ABC \| Test-Problems:-MHD_ABC.md ]]
 
-[MHD_LinearWave](Test-Problems:-MHD_LinearWave.md)
+[[ MHD_LinearWave \| Test-Problems:-MHD_LinearWave.md ]]
 
-[MHD_OrszagTangVortex](Test-Problems:-MHD_OrszagTangVortex.md)
+[[ MHD_OrszagTangVortex \| Test-Problems:-MHD_OrszagTangVortex.md ]]
 
-[ParticleEquilibriumIC](Test-Problems:-ParticleEquilibriumIC.md)
+[[ ParticleEquilibriumIC \| Test-Problems:-ParticleEquilibriumIC.md ]]
 
-[ParticleTest](Test-Problems:-ParticleTest.md)
+[[ ParticleTest \| Test-Problems:-ParticleTest.md ]]
 
-[Plummer](Test-Problems:-Plummer.md)
+[[ Plummer \| Test-Problems:-Plummer.md ]]
 
-[Riemann](Test-Problems:-Riemann.md)
+[[ Riemann \| Test-Problems:-Riemann.md ]]
 
-[SphericalCollapse](Test-Problems:-SphericalCollapse.md)
+[[ SphericalCollapse \| Test-Problems:-SphericalCollapse.md ]]
 
-[Zeldovich](Test-Problems:-Zeldovich.md)
+[[ Zeldovich \| Test-Problems:-Zeldovich.md ]]
 
-[CR_Diffusion](Test-Problems:-CR_Diffusion.md)
+[[ CR_Diffusion \| Test-Problems:-CR_Diffusion.md ]]
 
-[CR_ShockTube](Test-Problems:-CR_ShockTube.md)
+[[ CR_ShockTube \| Test-Problems:-CR_ShockTube.md ]]
 
-[CR_SoundWave](Test-Problems:-CR_SoundWave.md)
+[[ CR_SoundWave \| Test-Problems:-CR_SoundWave.md ]]
 
-[JetICMWall](Test-Problems:-JetICMWall.md)
+[[ JetICMWall \| Test-Problems:-JetICMWall.md ]]
 
 
