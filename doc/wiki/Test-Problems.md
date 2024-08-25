@@ -9,13 +9,11 @@ For now, see the demos in [[Quick Start]]. More detailed descriptions of other t
 
 The source codes of all test problems are put in `src/TestProblem` and the corresponding input files are put in `example/test_problem`.
 
-[[ Template \| Test-Problems:-Template ]]
-
-# ELBDM
+# ELBDM tests
 [[ ExtPot \| Test-Problems:-ExtPot ]]
 
 
-# Hydro
+# Hydro tests
 [[ AGORA_IsolatedGalaxy \| Test-Problems:-AGORA_IsolatedGalaxy ]]
 
 [[ AcousticWave \| Test-Problems:-AcousticWave ]]
