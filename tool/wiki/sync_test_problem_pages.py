@@ -10,7 +10,7 @@ import subprocess
 #====================================================================================================
 EXAMPLE_DIR = "../../example/test_problem/"
 WIKI_DIR    = "../../doc/wiki/Test-Problem-related/"
-OUT_MD      = "Test-Problems.md"
+OUT_MD      = "../../doc/wiki/Test-Problems.md"
 
 
 
