@@ -10,13 +10,11 @@
    - [[GRAVITY | Installation: Simulation-Options#GRAVITY]]
    - [[CR_DIFFUSION | Installation: Simulation-Options#CR_DIFFUSION]]
 - Available options
-   - [[GPU | Installation: Simulation-Options#GPU]]
-   - [[LOAD_BALANCE | Installation: Simulation-Options#LOAD_BALANCE]]
-   - [[SUPPORT_HDF5 | Installation: Simulation-Options#SUPPORT_HDF5]]
+   - [[Miscellaneous Options | Installation: Simulation-Options#miscellaneous-options]]
 
 
 # Default setup
-None
+1. Run for one period
 
 
 # Note
