@@ -1,5 +1,5 @@
 # Compilation flags
-- Must Enable
+- Must enable
    - [[MODEL=HYDRO | Installation: Simulation-Options#MODEL]]
    - [[EOS=EOS_GAMMA_CR | Installation: Simulation-Options#EOS]]
    - [[FLOAT8 | Installation: Simulation-Options#FLOAT8]]
