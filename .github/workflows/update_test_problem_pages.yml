@@ -5,7 +5,7 @@ on:
   push:
     paths:
       - 'example/test_problem/*/*/README.md'
-      - 'example/test_problem/Template/README.md'
+      # - 'example/test_problem/Template/README.md'
       - 'tool/wiki/sync_test_problem_pages.py'
 
 env:
