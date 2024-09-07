@@ -14,7 +14,7 @@
 
 
 # Default setup
-None
+1. Run for one period
 
 
 # Note
