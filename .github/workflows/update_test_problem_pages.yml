@@ -24,7 +24,7 @@ jobs:
         run: |
           cd tool/wiki
           python --version
-          python sync_test_probelm_pages.py
+          python sync_test_problem_pages.py
       - name: move markdown
         run: |
           mv tool/wiki/Test-Problems.md doc/wiki/
