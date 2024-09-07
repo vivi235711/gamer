@@ -1,22 +1,20 @@
-Compilation flags:
-========================================
-Enable :
-        MODEL=HYDRO
-        EOS=EOS_GAMMA_CR
-        COSMIC_RAY
-Disable:
-        COMOVING
-        PARTICLE
-        GRAVITY
-        CR_DIFFUSION
+# Compilation flags
+- Must Enable
+   - [[MODEL=HYDRO | Installation: Simulation-Options#MODEL]]
+   - [[EOS=EOS_GAMMA_CR | Installation: Simulation-Options#EOS]]
+   - [[COSMIC_RAY | Installation: Simulation-Options#COSMIC_RAY]]
+- Must disable
+   - [[COMOVING | Installation: Simulation-Options#COMOVING]]
+   - [[PARTICLE | Installation: Simulation-Options#PARTICLE]]
+   - [[GRAVITY | Installation: Simulation-Options#GRAVITY]]
+   - [[CR_DIFFUSION | Installation: Simulation-Options#CR_DIFFUSION]]
+- Available options
+   - [[Miscellaneous Options | Installation: Simulation-Options#miscellaneous-options]]
 
 
-Default setup:
-========================================
+# Default setup
 None
 
-Note:
-========================================
-1. A simple python script "shock_plot.py" is attached
-   Please modify the `SHOCK_DIR` in the script if needed
-2. Only support for 1D only
+# Note
+1. A simple Python script `shock_plot.py` is attached. Please modify the `SHOCK_DIR` in the script if needed
+2. Only support for 1D
