@@ -1,5 +1,5 @@
 # Compilation flags
-- Must Enable
+- Must enable
    - [[MODEL=HYDRO | Installation: Simulation-Options#MODEL]]
    - [[EOS=EOS_GAMMA_CR | Installation: Simulation-Options#EOS]]
    - [[COSMIC_RAY | Installation: Simulation-Options#COSMIC_RAY]]
