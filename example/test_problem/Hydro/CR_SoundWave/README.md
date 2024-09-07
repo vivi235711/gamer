@@ -14,7 +14,8 @@
 
 
 # Default setup
-1. Run for one period
+1. Resolution = 64^3
+2. Run for one period
 
 
 # Note
