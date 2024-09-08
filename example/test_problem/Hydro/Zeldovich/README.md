@@ -40,7 +40,7 @@
 3. Particle
    | Parameter name  | value |
    |---              |---    |
-   | PAR_NPAR        | -1    | 
+   | PAR_NPAR        | -1    |
    | PAR_INIT        | 1     |
    | PAR_IC_FORMAT   | 1     |
    | PAR_IC_MASS     | -1.0  |

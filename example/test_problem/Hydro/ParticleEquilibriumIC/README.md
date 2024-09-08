@@ -21,7 +21,7 @@
 
 2. Test the evolution of all sorts of models, like Plummer, NFW, Burkert, Jaffe, Hernquist, Einasto.
    To switch among different models, set `Cloud_Type` in your physical parameter files.
-   
+
    Available options include:
    `Plummer`, `NFW`, `Burkert`, `Jaffe`, `Hernquist`, `Einasto`, and `Table`
 

@@ -40,6 +40,6 @@
    unphysical results since the time-step would likely be over-estimated due to both the
    zero initial velocity and the disabling of [[DT__GRAVITY | Runtime-Parameters:-Timestep#DT__GRAVITY]].
 > [!NOTE]
-> It's better to adopt [[OPT__DT_LEVEL | Runtime-Parameters:-Timestep#OPT__DT_LEVEL ]] = 2 and 
+> It's better to adopt [[OPT__DT_LEVEL | Runtime-Parameters:-Timestep#OPT__DT_LEVEL ]] = 2 and
 > small [[DT__FLUID_INIT| Runtime-Parameters:-Timestep#DT__FLUID_INIT]] for the first step,
 > dump data, and then restart with [[OPT__DT_LEVEL | Runtime-Parameters:-Timestep#OPT__DT_LEVEL ]] = 3.
