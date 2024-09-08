@@ -27,7 +27,7 @@
 # Note
 1. Since GAMER does not support real 1D/2D simulations, one should set the
    root-level grid size to 16 (i.e., patch size*2) in the transverse directions
-2. Enable `MHD` in the `Makefile` for the Riemann problems involving magnetic field
+2. Enable [[MHD | Installation: Simulation-Options#MHD]] in the `Makefile` for the Riemann problems involving magnetic field
 3. Plotting scripts: `plot__hydro_dens.gpt`, `plot__mhd.gpt`
 4. The analytical solution of `ReferenceSolution/Gamma_1.67/BrioWu` adopts a
    regular solution (a rotational wave) at x~0.495 while numerical simulations
@@ -49,7 +49,7 @@
          - OUTPUT_DT             = 0.01
       - Plotting scripts: `plot__srhd_ur.gpt` and `plot__srhd_ur.py`
       - The analytical solution: `ReferenceSolution/TM_EoS/SRHD_UR`
-      - Reference: Figure 4. in "Tseng et al. 2021, MNRAS, 504, 3298"
+      - Reference: Figure 4. in [Tseng et al. 2021, MNRAS, 504, 3298](https://doi.org/10.1093/mnras/stab1006)
 
    - Setup for SRHD mixed ultra-relativistic and non-relativistic limits
       - Input__TestProb
@@ -64,4 +64,4 @@
          - OUTPUT_DT             = 0.5
       - Plotting scripts: `plot__srhd_mixed.gpt` and `plot__srhd_mixed.py`
       - The analytical solution: `ReferenceSolution/TM_EoS/SRHD_Mixed`
-      - Reference: Figure 5. in "Tseng et al. 2021, MNRAS, 504, 3298"
+      - Reference: Figure 5. in [Tseng et al. 2021, MNRAS, 504, 3298](https://doi.org/10.1093/mnras/stab1006)

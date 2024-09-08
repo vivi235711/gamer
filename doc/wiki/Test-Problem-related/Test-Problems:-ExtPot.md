@@ -24,4 +24,4 @@
 
 
 # Note
-1. To have a stationary wave fuction, the point source mass must be much larger than the wave function mass
+1. To have a stationary wave function, the point source mass must be much larger than the wave function mass

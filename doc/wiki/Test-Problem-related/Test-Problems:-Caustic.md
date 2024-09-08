@@ -24,8 +24,7 @@
 
 
 # Note
-1. Ref: Ryu, D., Ostriker, J. P., Kang, H., & Cen, R. 1993, ApJ, 414, 1
-
+1. Ref: [Ryu, D., Ostriker, J. P., Kang, H., & Cen, R. 1993, ApJ, 414, 1](https://doi.org/10.1086/173051)
 2. This test is good for testing the dual-energy formalism
    --> Without it the preshock region will be over-heated
 
