@@ -13,12 +13,14 @@
 
 # Default setup
 1. Resolution = 64^3
-2. Simulation time: stable -> one period; unstable -> grow/decay by a factor of 50
+2. Simulation time:
+   1. stable -> one period
+   2. unstable -> grow/decay by a factor of 50
 3. Gravitational constant = 1/(4*pi) = 0.07957747154
 
 
 # Note
-1. Support both hydro and MHD. For the latter, a fast wave solution is adopted.
+1. Support both hydro and MHD. For the latter, a fast-wave solution is adopted.
 2. Support both 1D and 3D cases --> set by `Jeans_Dir`
 3. A simple gnuplot script `plot.gpt` is attached
 4. `Record__L1Err` records the L1 errors
