@@ -57,8 +57,6 @@ for model in os.listdir( EXAMPLE_DIR ):
             CopyAndAddWarning( EXAMPLE_DIR+file_name, WIKI_DIR+"Test-Problems:-"+test+".md" )
             continue
 
-        status = subprocess.call( ["git", "diff", "--exit-code", EXAMPLE_DIR+file_name] )
-        if status == 0: continue
         print("Copying test problem (%5s/%-30s) README.md to %s"%(model, test, WIKI_DIR))
         CopyAndAddWarning( EXAMPLE_DIR+file_name, WIKI_DIR+"Test-Problems:-"+test+".md" )
 
