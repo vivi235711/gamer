@@ -11,7 +11,7 @@
 
 
 # Default setup
-`OPT__FREEZE_FLUID`    1
+[[OPT__FREEZE_FLUID | Hydro#OPT__FREEZE_FLUID]] = 1
 
 
 # Note
@@ -21,16 +21,18 @@
 
 2. Test the evolution of all sorts of models, like Plummer, NFW, Burkert, Jaffe, Hernquist, Einasto.
    To switch among different models, set `Cloud_Type` in your physical parameter files.
+   
    Available options include:
-   `Plummer`, `NFW`, `Burkert`, `Jaffe`, `Hernquist`, `Einasto`, `Table`
+   `Plummer`, `NFW`, `Burkert`, `Jaffe`, `Hernquist`, `Einasto`, and `Table`
 
    If you want to initialize a model with a given tabular density profile, use the option `Table` and input
    your file name in `Density_Table_Name` in your physical parameter files; otherwise input `NONE`.
 
-3. Sometimes the spatial resolution is not high enough for some models like Jaffe. Please increase `MAX_LEVEL` in `Input__Parameter`.
+4. Sometimes the spatial resolution is not high enough for some models like Jaffe.
+   Please increase [[MAX_LEVEL | Runtime-Parameters:-Refinement#MAX_LEVEL]] in `Input__Parameter`.
 
-4. You can construct multiple clouds of particles at the same time.
+5. You can construct multiple clouds of particles at the same time.
    For example, replace `Input__TestProb` with `Input_TestProb_Double` will allow you to construct two clouds of particles.
    For details, you may check `Input__TestProb` for further instructions.
 
-5. To generate example density or external potential tables, you may use the python files in `tool/table_maker/`.
+6. To generate example density or external potential tables, you may use the python files in `tool/table_maker/`.
