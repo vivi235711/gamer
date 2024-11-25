@@ -2,9 +2,10 @@
 
 import argparse
 import csv
-import os 
+import os
 import sys
 
+import fit_NFW
 import numpy as np
 import pandas as pd
 import yt
@@ -51,7 +52,6 @@ if ts[0].cosmological_simulation:
     omega_M0         = ts[0].omega_matter
 else:
     omega_M0         = 0.3158230904284232
-newton_G             = ts[0].units.newtons_constant.to('(kpc*km**2)/(s**2*Msun)').d     #(kpc*km^2)/(s^2*Msun)
 background_density_0 = (1*ts[0].units.code_density).to("Msun/kpc**3").d
 particle_mass        = (ts[0].parameters['ELBDM_Mass']*ts[0].units.code_mass).to('eV/c**2').d
 zeta_0               = (18*np.pi**2 + 82*(omega_M0 - 1) - 39*(omega_M0 - 1)**2)/omega_M0 
@@ -70,7 +70,7 @@ storage = {}
 # new : change x, y, z to the guessed halo center
 # append : according to the last line of halo_parameter_filename
 if writing_mode == 'new':
-    coordinates = ts[0].arr( [ 1.363573790, 0.462754518, 0.507753611 ] , 'code_length' ) 
+    coordinates = ts[0].arr( [ 3.83, 2.05, 1.64 ] , 'code_length' ) 
 elif writing_mode == 'append':
     df = pd.read_csv( halo_parameter_filename, sep = '\s+' , header = 0 )
     coordinates = ts[0].arr( [ df['x'].iloc[-1], df['y'].iloc[-1], df['z'].iloc[-1] ] , 'code_length' ) 
@@ -82,10 +82,31 @@ else:
 def soliton(x, xc ,time_a):
     return 1.9/time_a*((particle_mass/1e-23)**-2)*((xc)**-4)/(1+9.1*1e-2*(x/xc)**2)**8*1e9
 
-def find_virial_mass(r,mass_para,zeta):
-    # mass = np.interp(r, mass_para[0], mass_para[1])
-    mass = 10**np.interp(np.log10(r), np.log10(mass_para[0]), np.log10(mass_para[1]))
-    return mass-zeta*background_density_0*(4/3*np.pi*r**3)
+def find_virial(para,zeta,current_time_a, NFW = False):
+    
+    def enclosed_mass(x):
+        if NFW:
+            rho0 = para[0]
+            Rs = para[1]
+            mass = 4*np.pi*rho0*Rs**3*(np.log((Rs+x)/Rs)-(x/(Rs+x)))
+        else:
+            r = para[0]
+            mass = para[1]
+            mass = 10**np.interp(np.log10(x), np.log10(r), np.log10(mass))
+        return mass
+    
+    def zeta_mass(x):
+        return zeta*background_density_0/current_time_a**3*(4/3*np.pi*x**3)
+    
+    halo_radius = ridder(lambda x:enclosed_mass(x) - zeta_mass(x), min_radius, max_radius)
+    
+    return halo_radius
+
+def get_zeta(current_time_z):
+    # defintion of zeta (halo radius)
+    omega_M = (omega_M0*(1 + current_time_z)**3)/(omega_M0*(1 + current_time_z)**3 + (1 - omega_M0))
+    zeta = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M
+    return zeta
 
 for sto, ds in ts.piter(storage=storage):
     # periodicity
@@ -94,13 +115,11 @@ for sto, ds in ts.piter(storage=storage):
     # find center 
     # find the maximum value in a sphere extending halo_radius from center_guess
     halo_radius  = 0.1            # halo radius in Mpc/h --> change this value properly
-    if ds.cosmological_simulation:
-        center_guess = coordinates
-        sphere_guess = ds.sphere( center_guess, (halo_radius, 'code_length' ) )
-        center_find  = sphere_guess.quantities.max_location( 'density' )
-        center_coordinate  = ds.arr( [center_find[1].d, center_find[2].d, center_find[3].d], 'code_length' )
-    else:
-        center_coordinate = coordinates
+    center_guess = coordinates
+    sphere_guess = ds.sphere( center_guess, (halo_radius, 'code_length' ) )
+    center_find  = sphere_guess.quantities.max_location( 'density' )
+    center_coordinate  = ds.arr( [center_find[1].d, center_find[2].d, center_find[3].d], 'code_length' )
+
     print(center_coordinate.in_units('code_length')) 
 
     # extract halo
@@ -153,13 +172,11 @@ for sto, ds in ts.piter(storage=storage):
         current_time_z = 0
     current_time_a = 1.0/(1+current_time_z)
 
-    # defintion of zeta (halo radius)
-    omega_M = (omega_M0*(1 + current_time_z)**3)/(omega_M0*(1 + current_time_z)**3 + (1 - omega_M0))
-    zeta = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M 
+    zeta = get_zeta(current_time_z)
 
     # use mass_accumulation directly
-    halo_radius = ridder(lambda x:find_virial_mass(x,(radius, mass_accumulate),zeta),min_radius, max_radius)
-    # halo_mass = 10**np.interp(np.log10(halo_radius), np.log10(radius), np.log10(mass_accumulate))
+    # halo_radius = ridder(lambda x:find_virial_mass(x,(radius, mass_accumulate),zeta),min_radius, max_radius)
+    halo_radius = find_virial((radius, mass_accumulate), zeta, current_time_a)
     halo_mass = 10**np.interp(np.log10(halo_radius), np.log10(radius), np.log10(mass_accumulate))
         
     #core radius 1 : curve fit
@@ -175,13 +192,23 @@ for sto, ds in ts.piter(storage=storage):
     popt, pcov = curve_fit(lambda x, r_c:soliton(x, r_c, current_time_a), radius[avg], density[avg],bounds=(0, np.inf))
     core_radius_1 = popt[0]
     # a = (2**(1.0/8) - 1)**(1.0/2)
-    # core_mass_1 = ((4.2*10**9/((particle_mass/10**-23)**2*(float(core_radius_1*current_time_a)*10**3)))*(1/(a**2 + 1)**7)*(3465*a**13 + 23100*a**11 + 65373*a**9 + 101376*a**7 + 92323*a**5 + 48580*a**3 - 3465*a + 3465*(a**2 + 1)**7*np.arctan(a)))
+    # core_mass_1 = ((4.2*10**9/((particle_mass/10**-23)**2*((core_radius_1*current_time_a)*10**3)))*(1/(a**2 + 1)**7)*(3465*a**13 + 23100*a**11 + 65373*a**9 + 101376*a**7 + 92323*a**5 + 48580*a**3 - 3465*a + 3465*(a**2 + 1)**7*np.arctan(a)))
     core_mass_1 = 10**np.interp(np.log10(core_radius_1),np.log10(radius), np.log10(mass_accumulate))   
 
     #core radius 3
-    core_radius_3 = (max(density)/10**9/1.9*float(current_time_a)*(particle_mass/10**-23)**2)**-0.25
+    core_radius_3 = (max(density)/10**9/1.9*current_time_a*(particle_mass/10**-23)**2)**-0.25
     a = (2**(1.0/8) - 1)**(1.0/2)	
-    core_mass_3 = ((4.2*10**9/((particle_mass/10**-23)**2*(float(core_radius_3*current_time_a)*10**3)))*(1/(a**2 + 1)**7)*(3465*a**13 + 23100*a**11 + 65373*a**9 + 101376*a**7 + 92323*a**5 + 48580*a**3 - 3465*a + 3465*(a**2 + 1)**7*np.arctan(a)))
+    core_mass_3 = ((4.2*10**9/((particle_mass/10**-23)**2*((core_radius_3*current_time_a)*10**3)))*(1/(a**2 + 1)**7)*(3465*a**13 + 23100*a**11 + 65373*a**9 + 101376*a**7 + 92323*a**5 + 48580*a**3 - 3465*a + 3465*(a**2 + 1)**7*np.arctan(a)))
+
+
+    ### NFW
+    range_FDM = (radius>core_radius_1*6) & (radius<halo_radius)
+    rho0, Rs = fit_NFW.fit_NFW_dens(radius, density/current_time_a**3, range_FDM)
+    halo_radius_NFW = find_virial((rho0,Rs), zeta, current_time_a, True)
+    halo_mass_NFW = fit_NFW.NFW_mass((rho0, Rs), halo_radius_NFW)
+    Ep_fit = fit_NFW.get_Ep_ideal(halo_mass_NFW, halo_radius_NFW, halo_radius_NFW/Rs, 'NFW')
+
+    Ep_sim = fit_NFW.get_Ep_sph_sym((radius,density), halo_radius, halo_mass)
 
     sto_list = []
     sto_list.append(int(str(ds).split("_")[-1]))
@@ -199,6 +226,12 @@ for sto, ds in ts.piter(storage=storage):
     sto_list.append(core_mass_1)
     sto_list.append(core_mass_2)
     sto_list.append(core_mass_3)
+    sto_list.append(rho0)
+    sto_list.append(Rs)
+    sto_list.append(halo_radius_NFW)
+    sto_list.append(halo_mass_NFW)
+    sto_list.append(Ep_fit)
+    sto_list.append(Ep_sim)
 
 
     sto.result_id = str(ds)
@@ -225,7 +258,7 @@ for sto, ds in ts.piter(storage=storage):
 if yt.is_root():
    if writing_mode != 'append':
       with open("%s"%halo_parameter_filename , 'w') as f:
-         f.write(" #    mass                        x                        y                        z          time   halo_radius     halo_mass  peak_density core_radius_1 core_radius_2 core_radius_3   core_mass_1   core_mass_2   core_mass_3\n")
+         f.write(" #    mass                        x                        y                        z          time   halo_radius     halo_mass  peak_density core_radius_1 core_radius_2 core_radius_3   core_mass_1   core_mass_2   core_mass_3          rho0            Rs    NFW_radius      NFW_mass        fit_Ep        sim_Ep\n")
    with open("%s"%halo_parameter_filename , 'a') as f:
       writer = csv.writer(f, lineterminator='\n')
       for L in sorted(storage.items()):
