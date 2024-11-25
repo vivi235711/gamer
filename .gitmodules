@@ -1,0 +1,3 @@
+[submodule "tool/visualization/core-halo/shr"]
+	path = tool/visualization/core-halo/shr
+	url = git@github.com:calab-ntu/fdm-soliton-halo-relation.git
