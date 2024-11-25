@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#PBS -N plot
+##PBS -M PUT_YOUR_EMAIL_HERE
+#PBS -m abe
+#PBS -q allq
+#PBS -k n
+#PBS -l walltime=720:00:00
+#PBS -l nodes=1:ppn=32
+##PBS -o stdout
+##PBS -e stderr
+##PBS -W depend=afterok:JOB_ID
+##PBS -W depend=afterany:JOB_ID
+
+if [ "$PBS_ENVIRONMENT" == "PBS_BATCH" ]; then
+   cd $PBS_O_WORKDIR
+fi
+
+# Set umask explicitly
+umask 022
+
+LOG_FILE=log
+
+file_in=../Data
+START_ID=68
+END_ID=68
+DELTA_ID=1
+HALO=1
+
+mkdir -p prof_dens prof_mass volume velocity proj slice
+mkdir -p velocity/v2_of_radius "velocity/output_$HALO"
+
+mpirun -map-by ppr:1:socket:pe=32 --report-bindings python3 plot__proj-z-dens.py -s $START_ID -e $END_ID -halo $HALO 1>>$LOG_FILE 2>&1
+mpirun -map-by ppr:1:socket:pe=32 --report-bindings python3 plot__profile_mpi.py -s $START_ID -e $END_ID -halo $HALO 1>>$LOG_FILE 2>&1
+python3 plot__profile_with_data.py -s $START_ID -e $END_ID -halo $HALO 1>>$LOG_FILE 2>&1
+
+source MultiFiles__GAMER_ExtractProfile.sh $file_in $START_ID $END_ID $DELTA_ID $HALO 1>>$LOG_FILE 2>&1
+mv Ave* Vir* velocity/output_$HALO
+python3 plot__velocity.py -s $START_ID -e $END_ID -halo $HALO 1>>$LOG_FILE 2>&1
+
+## script to restart a simulation automatically if the run failed
+## sh auto_restart.sh 1>>$LOG_FILE 2>&1
+
+echo "Terminating CUDA MPS server" >> $LOG_FILE
+mpirun -map-by ppr:1:node:pe=1 kill_nvidia_MPS_local.sh 1>>$LOG_FILE 2>&1
