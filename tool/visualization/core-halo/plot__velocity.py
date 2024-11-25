@@ -312,7 +312,7 @@ if writing_mode == 'new':
         # writer.writerow(['#','a','rho0_FDM','Rs_FDM','Mass_NFW_fit_FDM','Radius_NFW_fit_FDM','Ep_NFW_fit_FDM',
         #                 'rho0_CDM','Rs_CDM','Mass_NFW_fit_CDM','Radius_NFW_fit_CDM','Ep_NFW_fit_CDM',
         #                 'Mass_FDM','Radius_FDM','Ep_FDM','Mass_CDM','Radius_CDM','Ep_CDM'])
-        file.write(" #     time_a  core_Both     core_QP   core_Bulk  inner_Both    inner_QP  inner_Bulk   halo_Both    halo_QP    halo_Bulk average_Both     ave_QP    ave_Bulk\n")
+        file.write(" #     time_a   core_Both     core_QP   core_Bulk  inner_Both    inner_QP  inner_Bulk   halo_Both    halo_QP    halo_Bulk    ave_Both      ave_QP    ave_Bulk\n")
 
 
 writing_mode = 'append'
