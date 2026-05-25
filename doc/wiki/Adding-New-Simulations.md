@@ -255,7 +255,7 @@ in the output files, and the field index `NewFieldIdx` can be used to
 access the field data (see the next step). The check `if ( NewFieldIdx == Idx_Undefined )`
 is just to avoid redundant assignments to the same field index variable.
 
-    Tfuld be set to either `FIXUP_FLUX_YES` or `FIXUP_FLUX_NO`.
+    The second parameter should be set to either `FIXUP_FLUX_YES` or `FIXUP_FLUX_NO`.
 It controls whether the new field will be corrected by the fluxes across the coarse-fine boundaries
 when enabling [[ OPT__FIXUP_FLUX | [Runtime-Parameters]-Hydro#OPT__FIXUP_FLUX ]].
 
