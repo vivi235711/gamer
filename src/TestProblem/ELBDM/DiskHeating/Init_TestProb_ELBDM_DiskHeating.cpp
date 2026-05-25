@@ -47,7 +47,8 @@ static int     DispTable_Nbin;            // number of bins of velocity dispersi
 void Par_Init_ByFunction_DiskHeating( const long NPar_ThisRank, const long NPar_AllRank,
                                       real_par *ParMass, real_par *ParPosX, real_par *ParPosY, real_par *ParPosZ,
                                       real_par *ParVelX, real_par *ParVelY, real_par *ParVelZ, real_par *ParTime,
-                                      long_par *ParType, real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
+                                      long_par *ParType,
+                                      real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
                                       long_par *AllAttributeInt[PAR_NATT_INT_TOTAL] );
 static void Init_NewDiskRestart();
 static void Init_NewDiskVelocity();
@@ -85,6 +86,10 @@ void Validate()
 
 #  ifndef PARTICLE
    Aux_Error( ERROR_INFO, "PARTICLE must be enabled !!\n" );
+#  endif
+
+#  ifndef STORE_PAR_ACC
+   Aux_Error( ERROR_INFO, "STORE_PAR_ACC must be enabled !!\n" );
 #  endif
 
 #  ifdef COMOVING
@@ -171,7 +176,7 @@ void LoadInputTestProb( const LoadParaMode_t load_mode, ReadPara_t *ReadPara, HD
    LOAD_PARA( load_mode, "Disk_R",                  &Disk_R,                  1.0,           Eps_double,       NoMax_double      );
    LOAD_PARA( load_mode, "DispTableFile",           DispTableFile,            NoDef_str,     Useless_str,      Useless_str       );
 
-} // FUNCITON : LoadInputTestProb
+} // FUNCTION : LoadInputTestProb
 
 
 
@@ -456,6 +461,7 @@ void Init_NewDiskRestart()
    real_par *Pos_AllRank[3] = { NewParAttFlt[PAR_POSX], NewParAttFlt[PAR_POSY], NewParAttFlt[PAR_POSZ] };
    real_par *Vel_AllRank[3] = { NewParAttFlt[PAR_VELX], NewParAttFlt[PAR_VELY], NewParAttFlt[PAR_VELZ] };
    long_par *Type_AllRank   =   NewParAttInt[PAR_TYPE];
+   long_par *PUID_AllRank   =   NewParAttInt[PAR_PUID];
 
    if ( AddParWhenRestartByFile ) // add new disk via DiskHeatingParticleIC
    {
@@ -511,6 +517,8 @@ void Init_NewDiskRestart()
             Mass_AllRank[p] = ParData1[0];
 //          label
             Type_AllRank[p] = (long_par)ParData1[7]; // 1=CDM halo, 2=disk
+//          particle uid
+            PUID_AllRank[p] = PUID_TBA;
 
 //          position
             Pos_AllRank[0][p] = ParData1[1];
@@ -572,6 +580,8 @@ void Init_NewDiskRestart()
             Mass_AllRank[p] = ParM;
 //          label
             Type_AllRank[p] = (long_par)3;      // use 3 to represent thin disk particles
+//          particle uid
+            PUID_AllRank[p] = PUID_TBA;
 
 //          position: statisfying surface density Sigma=Disk_Mass/(2*pi*Disk_R**2)*exp(-R/Disk_R)
             Ran  = RNG->GetValue( 0, 0.0, 1.0 );
@@ -663,7 +673,9 @@ void Init_NewDiskVelocity()
    long_par *ParType   =   amr->Par->Type;
    real_par *ParPos[3] = { amr->Par->PosX, amr->Par->PosY, amr->Par->PosZ };
    real_par *ParVel[3] = { amr->Par->VelX, amr->Par->VelY, amr->Par->VelZ };
+#  ifdef STORE_PAR_ACC
    real_par *ParAcc[3] = { amr->Par->AccX, amr->Par->AccY, amr->Par->AccZ };
+#  endif
 
    real ParRadius[2];
    real NormParRadius[2];
@@ -686,8 +698,10 @@ void Init_NewDiskVelocity()
          NormParRadius[0] = ParRadius[0]/ ParR;
          NormParRadius[1] = ParRadius[1]/ ParR;
 
+#        ifdef STORE_PAR_ACC
 //       compute radial acceleration
          V_acc = sqrt(  fabs( ParRadius[0]*ParAcc[0][p] + ParRadius[1]*ParAcc[1][p] )  );
+#        endif
 
 //       add velocity dispersion
          sigma   = Get_Dispersion( ParR );
