@@ -415,7 +415,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
 
 #  if (MODEL == ELBDM)
    const int ELBDM_VelDumpIdx0 = ( OPT__OUTPUT_ELBDM_VEL ) ? NFieldStored : NoDump;
-   if ( ELBDM_VelDumpIdx0+2 >= NFIELD_STORED_MAX )
+   if ( ELBDM_VelDumpIdx0+5 >= NFIELD_STORED_MAX )
       Aux_Error( ERROR_INFO, "exceed NFIELD_STORED_MAX (%d) !!\n", NFIELD_STORED_MAX );
    if ( OPT__OUTPUT_ELBDM_VEL )
    {
@@ -812,9 +812,6 @@ void Output_DumpData_Total_HDF5( const char *FileName )
 
    real (*Der_FluIn)[NCOMP_TOTAL][ CUBE(DER_NXT)            ] = new real [Der_NP][NCOMP_TOTAL ][ CUBE(DER_NXT)            ];
    real (*Der_Out  )             [ CUBE(PS1)                ] = new real         [DER_NOUT_MAX][ CUBE(PS1)                ];
-#  if ( MODEL == ELBDM )
-   real (*Der_ELBDMIn)[NCOMP_TOTAL][ CUBE(ELBDM_DER_NXT)    ] = new real [Der_NP][NCOMP_TOTAL ][ CUBE(ELBDM_DER_NXT)      ];
-#  endif
 #  ifdef MHD
    real (*Der_MagFC)[NCOMP_MAG  ][ (DER_NXT+1)*SQR(DER_NXT) ] = new real [Der_NP][NCOMP_MAG   ][ (DER_NXT+1)*SQR(DER_NXT) ];
    real (*Der_MagCC)             [ CUBE(DER_NXT)            ] = new real         [NCOMP_MAG   ][ CUBE(DER_NXT)            ];
@@ -1181,7 +1178,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
                   const int vv = (v - ELBDM_VelDumpIdx0)%3;
                   for (int PID0=0; PID0<amr->NPatchComma[lv][1]; PID0+=8)
                   {
-                     Prepare_PatchData( lv, Time[lv], Der_ELBDMIn[0][0], NULL, ELBDM_DER_GHOST_SIZE, 1, &PID0,
+                     Prepare_PatchData( lv, Time[lv], Der_FluIn[0][0], NULL, DER_GHOST_SIZE, 1, &PID0,
                                     _TOTAL, _NONE, OPT__FLU_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26,
                                     IntPhase_No, OPT__BC_FLU, BC_POT_NONE, MinDens_No, MinPres_No, MinTemp_No, MinEntr_No,
                                     DE_Consistency_No );
@@ -1189,7 +1186,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
                      {
 //                      compute and store the target derived field
                         const int PID  = PID0 + LocalID;
-                        ELBDM_DerivedField( FieldData[PID][0][0], Der_ELBDMIn[LocalID][0], fv, vv, ELBDM_DER_GHOST_SIZE , amr->dh[lv] );
+                        ELBDM_DerivedField( FieldData[PID][0][0], Der_FluIn[LocalID][0], fv, vv, DER_GHOST_SIZE , amr->dh[lv] );
                      } // for (int LocalID=0; LocalID<8; LocalID++)
 
                   } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
@@ -1199,7 +1196,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
                {
                   for (int PID0=0; PID0<amr->NPatchComma[lv][1]; PID0+=8)
                   {
-                     Prepare_PatchData( lv, Time[lv], Der_ELBDMIn[0][0], NULL, ELBDM_DER_GHOST_SIZE, 1, &PID0,
+                     Prepare_PatchData( lv, Time[lv], Der_FluIn[0][0], NULL, DER_GHOST_SIZE, 1, &PID0,
                                     _TOTAL, _NONE, OPT__FLU_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26,
                                     IntPhase_No, OPT__BC_FLU, BC_POT_NONE, MinDens_No, MinPres_No, MinTemp_No, MinEntr_No,
                                     DE_Consistency_No );
@@ -1207,7 +1204,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
                      {
 //                      compute and store the target derived field
                         const int PID  = PID0 + LocalID;
-                        ELBDM_DerivedField( FieldData[PID][0][0], Der_ELBDMIn[LocalID][0], 2, 0, ELBDM_DER_GHOST_SIZE , amr->dh[lv] );
+                        ELBDM_DerivedField( FieldData[PID][0][0], Der_FluIn[LocalID][0], 2, 0, DER_GHOST_SIZE , amr->dh[lv] );
                      } // for (int LocalID=0; LocalID<8; LocalID++)
                   } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
                } // if ( v == ELBDM_Q_PotDumpIdx )
@@ -1218,7 +1215,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
 
                   for (int PID0=0; PID0<amr->NPatchComma[lv][1]; PID0+=8)
                   {
-                     Prepare_PatchData( lv, Time[lv], Der_ELBDMIn[0][0], NULL, ELBDM_DER_GHOST_SIZE, 1, &PID0,
+                     Prepare_PatchData( lv, Time[lv], Der_FluIn[0][0], NULL, DER_GHOST_SIZE, 1, &PID0,
                                     _TOTAL, _NONE, OPT__FLU_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26,
                                     IntPhase_No, OPT__BC_FLU, BC_POT_NONE, MinDens_No, MinPres_No, MinTemp_No, MinEntr_No,
                                     DE_Consistency_No );
@@ -1226,7 +1223,7 @@ void Output_DumpData_Total_HDF5( const char *FileName )
                      {
 //                      compute and store the target derived field
                         const int PID  = PID0 + LocalID;
-                        ELBDM_DerivedField( FieldData[PID][0][0], Der_ELBDMIn[LocalID][0], 3, vv, ELBDM_DER_GHOST_SIZE , amr->dh[lv] );
+                        ELBDM_DerivedField( FieldData[PID][0][0], Der_FluIn[LocalID][0], 3, vv, DER_GHOST_SIZE , amr->dh[lv] );
                      } // for (int LocalID=0; LocalID<8; LocalID++)
                   } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
                } // if ( v >= ELBDM_Q_StressDumpIdx0 && v < ELBDM_Q_StressDumpIdx0+6 )
@@ -1426,9 +1423,6 @@ void Output_DumpData_Total_HDF5( const char *FileName )
    delete [] Der_MagCC;
 #  endif
    delete [] Der_FluInTmp;
-#  if ( MODEL == ELBDM )
-   delete [] Der_ELBDMIn;
-#  endif
 
 
 
