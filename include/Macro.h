@@ -840,9 +840,9 @@
 
 // number of ghost zones for computing derived fields
 #if (MODEL == ELBDM)
-#        define DER_GHOST_SIZE 2
+#        define DER_GHOST_SIZE      2
 #else
-#        define DER_GHOST_SIZE 1
+#        define DER_GHOST_SIZE      1
 #endif
 
 // number of ghost zones for feedback

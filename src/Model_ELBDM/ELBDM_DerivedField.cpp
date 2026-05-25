@@ -53,9 +53,9 @@ void ELBDM_differentiation( const real FieldIn[], const int k, const int j, cons
    Field3d Field = ( Field3d )FieldIn;
 
 // field values at the target cell
-   real Dens    = Field[DENS    ][k][j][i];
-   real Real    = Field[REAL    ][k][j][i];
-   real Imag    = Field[IMAG    ][k][j][i];
+   real Dens    = Field[DENS][k][j][i];
+   real Real    = Field[REAL][k][j][i];
+   real Imag    = Field[IMAG][k][j][i];
 
 
 // Richardson extrapolation 2nd order
@@ -118,13 +118,13 @@ void ELBDM_differentiation( const real FieldIn[], const int k, const int j, cons
    LapD    = ( Field[DENS][k ][j ][ip] + Field[DENS][k ][jp][i ] + Field[DENS][kp][j ][i ] +
                Field[DENS][k ][j ][im] + Field[DENS][k ][jm][i ] + Field[DENS][km][j ][i ] -
                6.0*Dens )*_dh2;
-   LapR     = ( Field[REAL][k ][j ][ip] + Field[REAL][k ][jp][i ] + Field[REAL][kp][j ][i ] +
+   LapR    = ( Field[REAL][k ][j ][ip] + Field[REAL][k ][jp][i ] + Field[REAL][kp][j ][i ] +
                Field[REAL][k ][j ][im] + Field[REAL][k ][jm][i ] + Field[REAL][km][j ][i ] -
                6.0*Real )*_dh2;
-   LapI     = ( Field[IMAG][k ][j ][ip] + Field[IMAG][k ][jp][i ] + Field[IMAG][kp][j ][i ] +
+   LapI    = ( Field[IMAG][k ][j ][ip] + Field[IMAG][k ][jp][i ] + Field[IMAG][kp][j ][i ] +
                Field[IMAG][k ][j ][im] + Field[IMAG][k ][jm][i ] + Field[IMAG][km][j ][i ] -
                6.0*Imag )*_dh2;
-   Lapf     = ( SQRT(Field[DENS][k ][j ][ip]) + SQRT(Field[DENS][k ][jp][i ]) + SQRT(Field[DENS][kp][j ][i ]) +
+   Lapf    = ( SQRT(Field[DENS][k ][j ][ip]) + SQRT(Field[DENS][k ][jp][i ]) + SQRT(Field[DENS][kp][j ][i ]) +
                SQRT(Field[DENS][k ][j ][im]) + SQRT(Field[DENS][k ][jm][i ]) + SQRT(Field[DENS][km][j ][i ]) -
                6.0*SQRT(Dens) )*_dh2;
 */
@@ -152,7 +152,7 @@ void ELBDM_differentiation( const real FieldIn[], const int k, const int j, cons
 // Return      :  ELBDMOut
 //-------------------------------------------------------------------------------------------------------
 void ELBDM_DerivedField( real ELBDMOut[], const real ELBDMIn[], int  FieldID,
-                     int direction, const int NGhost, const real dh )
+                         int direction, const int NGhost, const real dh )
 {
 
 // check
@@ -165,7 +165,7 @@ void ELBDM_DerivedField( real ELBDMOut[], const real ELBDMIn[], int  FieldID,
 // cast input/output arrays to 3D structures
    typedef real (*ELBDM_in)[PS1+2*NGhost ][PS1+2*NGhost ][PS1+2*NGhost ];
    typedef real (*ELBDM_out)[PS1 ][PS1 ][PS1 ];
-   ELBDM_in ELBDMIn3d = ( ELBDM_in )ELBDMIn;
+   ELBDM_in  ELBDMIn3d  = ( ELBDM_in  )ELBDMIn;
    ELBDM_out ELBDMOut3d = ( ELBDM_out )ELBDMOut;
 
 // conversion factor: hbar/m
@@ -182,34 +182,34 @@ void ELBDM_DerivedField( real ELBDMOut[], const real ELBDMIn[], int  FieldID,
             real LapD, LapR, LapI, Lapf;
 
 //          field values at current cell
-            real Dens    = ELBDMIn3d[DENS    ][k][j][i];
-            real Real    = ELBDMIn3d[REAL    ][k][j][i];
-            real Imag    = ELBDMIn3d[IMAG    ][k][j][i];
+            real Dens  = ELBDMIn3d[DENS][k][j][i];
+            real Real  = ELBDMIn3d[REAL][k][j][i];
+            real Imag  = ELBDMIn3d[IMAG][k][j][i];
             real _Dens = 1/Dens;
 
 //          calculate derivatives
             ELBDM_differentiation( ELBDMIn, k, j, i, GradD, GradR, GradI, LapD, LapR, LapI, Lapf, dh, NGhost );
 
 //          calculate the requested derived field
-            if ( FieldID == 0)
+            if ( FieldID == 0 )
             {
 //             bulk velocity: v = (R*dI/dx - I*dR/dx)/rho*hbar/m
                ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = _Eta*_Dens*( Real*GradI[direction] - Imag*GradR[direction] );
             }
-            else if ( FieldID == 1)
+            else if ( FieldID == 1 )
             {
 //             thermal velocity: w = (R*dR/dx + I*dI/dx)/rho*hbar/m
                ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = _Eta*_Dens*( Real*GradR[direction] + Imag*GradI[direction] );
             }
-            else if ( FieldID == 2)
+            else if ( FieldID == 2 )
             {
 //             quantum pressure: Q = -1/2*(Laplacian(f)/f)*hbar^2/m^2
                ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(-0.5*Lapf*_Eta*_Eta*SQRT(_Dens));
             }
-            else if ( FieldID == 3)
+            else if ( FieldID == 3 )
             {
 //             stress tensor: Sigma_(i,j) = 0.25*hbar^2/m^2 (1/rho*drho/dx_i*drho/dx_j - delta_ij*laplacian(rho))
-               if (direction <3)        ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(0.25*_Eta*_Eta*( _Dens*GradD[direction]*GradD[direction] - LapD ));   // diagonal components
+               if (direction < 3)       ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(0.25*_Eta*_Eta*( _Dens*GradD[direction]*GradD[direction] - LapD ));   // diagonal components
                else if (direction == 3) ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(0.25*_Eta*_Eta*( _Dens*GradD[0]*GradD[1] ));   // xy
                else if (direction == 4) ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(0.25*_Eta*_Eta*( _Dens*GradD[1]*GradD[2] ));   // yz
                else if (direction == 5) ELBDMOut3d[0][k-NGhost][j-NGhost][i-NGhost] = FABS(0.25*_Eta*_Eta*( _Dens*GradD[0]*GradD[2] ));   // xz

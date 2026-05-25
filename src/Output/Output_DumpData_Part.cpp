@@ -450,6 +450,19 @@ void WriteFile( FILE *File, const int lv, const int PID, const int i, const int 
       fprintf( File, BlankPlusFormat_Flt, HTilde );
    }
 #  endif
+
+#  ifdef SUPPORT_GRACKLE
+   if ( OPT__OUTPUT_GRACKLE_TEMP )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+   if ( OPT__OUTPUT_GRACKLE_MU )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+   if ( OPT__OUTPUT_GRACKLE_TCOOL )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+#  endif
+
 #  if ( MODEL == ELBDM )
    if ( OPT__OUTPUT_ELBDM_VEL ) {
       for (int v=0; v<6; v++)
@@ -462,18 +475,6 @@ void WriteFile( FILE *File, const int lv, const int PID, const int i, const int 
       for (int v=0; v<6; v++)
       fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
    }
-#  endif
-
-#  ifdef SUPPORT_GRACKLE
-   if ( OPT__OUTPUT_GRACKLE_TEMP )
-      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
-
-   if ( OPT__OUTPUT_GRACKLE_MU )
-      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
-
-   if ( OPT__OUTPUT_GRACKLE_TCOOL )
-      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
-
 #  endif
 
    if ( OPT__OUTPUT_USER_FIELD ) {
