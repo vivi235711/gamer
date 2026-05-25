@@ -80,25 +80,25 @@ void ELBDM_differentiation( const real FieldIn[], const int k, const int j, cons
    GradI[2] = (    4*_2dh*( Field[IMAG][kp ][j  ][i  ] - Field[IMAG][km ][j  ][i  ] )
                - 0.5*_2dh*( Field[IMAG][kpp][j  ][i  ] - Field[IMAG][kmm][j  ][i  ] ))/3;
 
-   LapD    =  (    4*_dh2*( Field[DENS][k  ][j  ][ip ] + Field[DENS][k  ][jp ][i  ] + Field[DENS][kp ][j  ][i  ] +
-                              Field[DENS][k  ][j  ][im ] + Field[DENS][k  ][jm ][i  ] + Field[DENS][km ][j  ][i  ] - 6.0*Dens )
+   LapD    =  (     4*_dh2*( Field[DENS][k  ][j  ][ip ] + Field[DENS][k  ][jp ][i  ] + Field[DENS][kp ][j  ][i  ] +
+                             Field[DENS][k  ][j  ][im ] + Field[DENS][k  ][jm ][i  ] + Field[DENS][km ][j  ][i  ] - 6.0*Dens )
                - 0.25*_dh2*( Field[DENS][k  ][j  ][ipp] + Field[DENS][k  ][jpp][i  ] + Field[DENS][kpp][j  ][i  ] +
-                              Field[DENS][k  ][j  ][imm] + Field[DENS][k  ][jmm][i  ] + Field[DENS][kmm][j  ][i  ] - 6.0*Dens ) )/3;
+                             Field[DENS][k  ][j  ][imm] + Field[DENS][k  ][jmm][i  ] + Field[DENS][kmm][j  ][i  ] - 6.0*Dens ) )/3;
 
-   LapR     = (    4*_dh2*( Field[REAL][k  ][j  ][ip ] + Field[REAL][k  ][jp ][i  ] + Field[REAL][kp ][j  ][i  ] +
-                              Field[REAL][k  ][j  ][im ] + Field[REAL][k  ][jm ][i  ] + Field[REAL][km ][j  ][i  ] - 6.0*Real )
+   LapR     = (    4*_dh2*(  Field[REAL][k  ][j  ][ip ] + Field[REAL][k  ][jp ][i  ] + Field[REAL][kp ][j  ][i  ] +
+                             Field[REAL][k  ][j  ][im ] + Field[REAL][k  ][jm ][i  ] + Field[REAL][km ][j  ][i  ] - 6.0*Real )
                - 0.25*_dh2*( Field[REAL][k  ][j  ][ipp] + Field[REAL][k  ][jpp][i  ] + Field[REAL][kpp][j  ][i  ] +
-                              Field[REAL][k  ][j  ][imm] + Field[REAL][k  ][jmm][i  ] + Field[REAL][kmm][j  ][i  ] - 6.0*Real ) )/3;
+                             Field[REAL][k  ][j  ][imm] + Field[REAL][k  ][jmm][i  ] + Field[REAL][kmm][j  ][i  ] - 6.0*Real ) )/3;
 
-   LapI     = (    4*_dh2*( Field[IMAG][k  ][j  ][ip ] + Field[IMAG][k  ][jp ][i  ] + Field[IMAG][kp ][j  ][i  ] +
-                              Field[IMAG][k  ][j  ][im ] + Field[IMAG][k  ][jm ][i  ] + Field[IMAG][km ][j  ][i  ] - 6.0*Imag )
+   LapI     = (     4*_dh2*( Field[IMAG][k  ][j  ][ip ] + Field[IMAG][k  ][jp ][i  ] + Field[IMAG][kp ][j  ][i  ] +
+                             Field[IMAG][k  ][j  ][im ] + Field[IMAG][k  ][jm ][i  ] + Field[IMAG][km ][j  ][i  ] - 6.0*Imag )
                - 0.25*_dh2*( Field[IMAG][k  ][j  ][ipp] + Field[IMAG][k  ][jpp][i  ] + Field[IMAG][kpp][j  ][i  ] +
-                              Field[IMAG][k  ][j  ][imm] + Field[IMAG][k  ][jmm][i  ] + Field[IMAG][kmm][j  ][i  ] - 6.0*Imag ) )/3;
+                             Field[IMAG][k  ][j  ][imm] + Field[IMAG][k  ][jmm][i  ] + Field[IMAG][kmm][j  ][i  ] - 6.0*Imag ) )/3;
 
-   Lapf     = (    4*_dh2*( SQRT(Field[DENS][k  ][j  ][ip ]) + SQRT(Field[DENS][k  ][jp ][i  ]) + SQRT(Field[DENS][kp ][j  ][i  ]) +
-                              SQRT(Field[DENS][k  ][j  ][im ]) + SQRT(Field[DENS][k  ][jm ][i  ]) + SQRT(Field[DENS][km ][j  ][i  ]) - 6.0*SQRT(Dens) )
+   Lapf     = (     4*_dh2*( SQRT(Field[DENS][k  ][j  ][ip ]) + SQRT(Field[DENS][k  ][jp ][i  ]) + SQRT(Field[DENS][kp ][j  ][i  ]) +
+                             SQRT(Field[DENS][k  ][j  ][im ]) + SQRT(Field[DENS][k  ][jm ][i  ]) + SQRT(Field[DENS][km ][j  ][i  ]) - 6.0*SQRT(Dens) )
                - 0.25*_dh2*( SQRT(Field[DENS][k  ][j  ][ipp]) + SQRT(Field[DENS][k  ][jpp][i  ]) + SQRT(Field[DENS][kpp][j  ][i  ]) +
-                              SQRT(Field[DENS][k  ][j  ][imm]) + SQRT(Field[DENS][k  ][jmm][i  ]) + SQRT(Field[DENS][kmm][j  ][i  ]) - 6.0*SQRT(Dens) ) )/3;
+                             SQRT(Field[DENS][k  ][j  ][imm]) + SQRT(Field[DENS][k  ][jmm][i  ]) + SQRT(Field[DENS][kmm][j  ][i  ]) - 6.0*SQRT(Dens) ) )/3;
 
 /*
    // calculate gradients using second-order central differences (commented out but preserved for reference)

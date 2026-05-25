@@ -612,7 +612,7 @@ void GetDerivedField( real *Der_In,
          Aux_Error( ERROR_INFO, "OutFieldIdx (%d) + NFieldOut (%d) > DER_NOUT_MAX (%d) !!\n",
                     OutFieldIdx, NFieldOut, DER_NOUT_MAX );
       ELBDM_DerivedField( Out[OutFieldIdx], FluIn[LocalID][0],
-                          2, 0, ELBDM_DER_GHOST_SIZE, dh);
+                          2, 0, ELBDM_DER_GHOST_SIZE, dh );
       OutFieldIdx += NFieldOut;
    }
    if ( OPT__OUTPUT_ELBDM_Q_STRESS )
