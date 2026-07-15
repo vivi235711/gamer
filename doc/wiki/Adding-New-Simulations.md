@@ -125,7 +125,8 @@ For details see
             void Par_Init_ByFunction_NewProblem( const long NPar_ThisRank, const long NPar_AllRank,
                                                  real_par *ParMass, real_par *ParPosX, real_par *ParPosY, real_par *ParPosZ,
                                                  real_par *ParVelX, real_par *ParVelY, real_par *ParVelZ, real_par *ParTime,
-                                                 long_par *ParType, real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
+                                                 long_par *ParType,
+                                                 real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
                                                  long_par *AllAttributeInt[PAR_NATT_INT_TOTAL] )
             #endif
             ```
@@ -255,7 +256,7 @@ in the output files, and the field index `NewFieldIdx` can be used to
 access the field data (see the next step). The check `if ( NewFieldIdx == Idx_Undefined )`
 is just to avoid redundant assignments to the same field index variable.
 
-    Tfuld be set to either `FIXUP_FLUX_YES` or `FIXUP_FLUX_NO`.
+    The second parameter should be set to either `FIXUP_FLUX_YES` or `FIXUP_FLUX_NO`.
 It controls whether the new field will be corrected by the fluxes across the coarse-fine boundaries
 when enabling [[ OPT__FIXUP_FLUX | [Runtime-Parameters]-Hydro#OPT__FIXUP_FLUX ]].
 
@@ -356,7 +357,8 @@ For example,
     void Par_Init_ByFunction_NewProblem( const long NPar_ThisRank, const long NPar_AllRank,
                                          real_par *ParMass, real_par *ParPosX, real_par *ParPosY, real_par *ParPosZ,
                                          real_par *ParVelX, real_par *ParVelY, real_par *ParVelZ, real_par *ParTime,
-                                         long_par *ParType, real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
+                                         long_par *ParType,
+                                         real_par *AllAttributeFlt[PAR_NATT_FLT_TOTAL],
                                          long_par *AllAttributeInt[PAR_NATT_INT_TOTAL] )
     {
        ...
