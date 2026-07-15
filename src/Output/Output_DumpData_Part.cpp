@@ -2,11 +2,12 @@
 
 static void WriteFile( FILE *File, const int lv, const int PID, const int i, const int j, const int k,
                        const int ii, const int jj, const int kk, const real (*DerField)[ CUBE(PS1) ] );
-static void GetDerivedField( real *Der_In,
+static void GetDerivedField( real (*Der_FluIn)[NCOMP_TOTAL][ CUBE(DER_NXT)            ],
                              real (*Der_Out  )             [ CUBE(PS1)                ],
+                             real (*Der_Out_1PG)           [ CUBE(PS2)                ],
                              real (*Der_MagFC)[NCOMP_MAG  ][ (DER_NXT+1)*SQR(DER_NXT) ],
                              real (*Der_MagCC)             [ CUBE(DER_NXT)            ],
-                             const int lv, const int PID, const bool PrepFluIn );
+                             const int lv, const int PID, const bool PrepFluIn, const bool PrepOutPG );
 
 
 
@@ -111,9 +112,11 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
 // for the derived fields
    const int Der_NP = 8;
    bool Der_PrepFluIn;
+   bool Der_PrepOutPG;
 
    real (*Der_FluIn)[NCOMP_TOTAL][ CUBE(DER_NXT)            ] = new real [Der_NP][NCOMP_TOTAL ][ CUBE(DER_NXT)            ];
-   real (*Der_Out  )             [ CUBE(PS1)                ] = new real         [DER_NOUT_MAX][ CUBE(PS1)                ];
+real (*Der_Out)               [ CUBE(PS1)                ] = new real         [DER_NOUT_MAX][ CUBE(PS1)                ];
+   real (*Der_Out_1PG)           [ CUBE(PS2)                ] = new real         [DER_NOUT_MAX][ CUBE(PS2)                ];
 #  ifdef MHD
    real (*Der_MagFC)[NCOMP_MAG  ][ (DER_NXT+1)*SQR(DER_NXT) ] = new real [Der_NP][NCOMP_MAG   ][ (DER_NXT+1)*SQR(DER_NXT) ];
    real (*Der_MagCC)             [ CUBE(DER_NXT)            ] = new real         [NCOMP_MAG   ][ CUBE(DER_NXT)            ];
@@ -121,9 +124,7 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
    real (*Der_MagFC)[NCOMP_MAG  ][ (DER_NXT+1)*SQR(DER_NXT) ] = NULL;
    real (*Der_MagCC)             [ CUBE(DER_NXT)            ] = NULL;
 #  endif
-#  if ( MODEL == ELBDM )
-   real (*Der_ELBDMIn)[NCOMP_TOTAL][ CUBE(ELBDM_DER_NXT)    ] = new real [Der_NP][NCOMP_TOTAL ][ CUBE(ELBDM_DER_NXT)      ];
-#  endif
+
 
    for (int TargetMPIRank=0; TargetMPIRank<MPI_NRank; TargetMPIRank++)
    {
@@ -173,6 +174,14 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
             if ( OPT__OUTPUT_ENTHALPY )
                                        fprintf( File, " %*s", StrLen_Flt, "Reduced enthalpy" );
 #           endif
+#           ifdef SUPPORT_GRACKLE
+            if ( OPT__OUTPUT_GRACKLE_TEMP )
+                                       fprintf( File, " %*s", StrLen_Flt, "Grackle temperature" );
+            if ( OPT__OUTPUT_GRACKLE_MU )
+                                       fprintf( File, " %*s", StrLen_Flt, "Grackle mu" );
+            if ( OPT__OUTPUT_GRACKLE_TCOOL )
+                                       fprintf( File, " %*s", StrLen_Flt, "Grackle cooling time" );
+#           endif
 #           if ( MODEL == ELBDM )
             if (OPT__OUTPUT_ELBDM_VEL)
             {
@@ -213,6 +222,7 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
             for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
             {
                if ( PID % 8 == 0 )  Der_PrepFluIn = true;
+               if ( PID % 8 == 0 )  Der_PrepOutPG = true;
 
 //             output the patch data only if it has no son (if the option "BaseOnly" is turned off)
                if ( amr->patch[0][lv][PID]->son == -1  ||  BaseOnly )
@@ -227,12 +237,9 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
                      if ( Corner[0] == Corner[1]  &&  Corner[0] == Corner[2] )
                      {
 //                      compute the derived fields
-#                       if ( MODEL == ELBDM )
-                        GetDerivedField( Der_ELBDMIn[0][0], Der_Out, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn );
-#                       else
-                        GetDerivedField( Der_FluIn[0][0], Der_Out, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn );
-#                       endif
+                        GetDerivedField( Der_FluIn, Der_Out, Der_Out_1PG, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn, Der_PrepOutPG );
                         Der_PrepFluIn = false;
+                        Der_PrepOutPG = false;
 
 //                      write data
                         for (int k=0; k<PS1; k++)
@@ -253,12 +260,9 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
                      if (  !Check_z  ||  ( EdgeL[2]<=z && EdgeR[2]>z )  )
                      {
 //                      compute the derived fields
-#                       if ( MODEL == ELBDM )
-                        GetDerivedField( Der_ELBDMIn[0][0], Der_Out, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn );
-#                       else
-                        GetDerivedField( Der_FluIn[0][0], Der_Out, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn );
-#                       endif
+                        GetDerivedField( Der_FluIn, Der_Out, Der_Out_1PG, Der_MagFC, Der_MagCC, lv, PID, Der_PrepFluIn, Der_PrepOutPG );
                         Der_PrepFluIn = false;
+                        Der_PrepOutPG = false;
 
 //                      write data
 //                      --> check whether the cell is within the target range
@@ -292,12 +296,10 @@ void Output_DumpData_Part( const OptOutputPart_t Part, const bool BaseOnly, cons
 
    delete [] Der_FluIn;
    delete [] Der_Out;
+   delete [] Der_Out_1PG;
 #  ifdef MHD
    delete [] Der_MagFC;
    delete [] Der_MagCC;
-#  endif
-#  if ( MODEL == ELBDM )
-   delete [] Der_ELBDMIn;
 #  endif
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s (DumpID = %d)           ... done\n", __FUNCTION__, DumpID );
@@ -448,6 +450,19 @@ void WriteFile( FILE *File, const int lv, const int PID, const int i, const int 
       fprintf( File, BlankPlusFormat_Flt, HTilde );
    }
 #  endif
+
+#  ifdef SUPPORT_GRACKLE
+   if ( OPT__OUTPUT_GRACKLE_TEMP )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+   if ( OPT__OUTPUT_GRACKLE_MU )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+   if ( OPT__OUTPUT_GRACKLE_TCOOL )
+      fprintf( File, BlankPlusFormat_Flt, DerField[ Der_FieldIdx ++ ][Der_CellIdx] );
+
+#  endif
+
 #  if ( MODEL == ELBDM )
    if ( OPT__OUTPUT_ELBDM_VEL ) {
       for (int v=0; v<6; v++)
@@ -478,36 +493,34 @@ void WriteFile( FILE *File, const int lv, const int PID, const int i, const int 
 // Description :  Compute the derived fields
 //
 // Note        :  1. FluIn[] and MagFC[] will be filled in only if "PrepFluIn == true"
-//                2. Called by Output_DumpData_Part()
+//                2. Out_1PG[] will be filled in only if "PrepOutPG == true"
+//                3. Called by Output_DumpData_Part()
 //
 // Parameter   :  FluIn     : Array to store the input fluid data for the derived field functions
-//                Out       : Array to store the output derived fields
+//                Out       : Array to store the output derived fields of one patch
+//                Out_1PG   : Array to store the output derived fields of one patch group
 //                MagFC     : Array to store the temporary face-centered B field
 //                MagCC     : Array to store the input cell-centered B field for the derived field functions
 //                lv        : Target refinement level
 //                PID       : Target patch ID
 //                PrepFluIn : Whether to fill in FluIn[] and MagCC[]
 //                            --> To prepare patches within the same patch group just once
+//                PrepOutPG : Whether to fill in Out_1PG[]
+//                            --> To prepare patches within the same patch group just once
 //
-// Return      :  FluIn[], Out[], MagFC[] (MagCC[] is not useful outside this function)
+// Return      :  FluIn[], Out[], Out_1PG[], MagFC[] (MagCC[] is not useful outside this function)
 //-------------------------------------------------------------------------------------------------------
-void GetDerivedField( real *Der_In,
+void GetDerivedField( real (*FluIn)[NCOMP_TOTAL][ CUBE(DER_NXT)            ],
                       real (*Out  )             [ CUBE(PS1)                ],
+                      real (*Out_1PG)           [ CUBE(PS2)                ],
                       real (*MagFC)[NCOMP_MAG  ][ (DER_NXT+1)*SQR(DER_NXT) ],
                       real (*MagCC)             [ CUBE(DER_NXT)            ],
-                      const int lv, const int PID, const bool PrepFluIn )
+                      const int lv, const int PID, const bool PrepFluIn, const bool PrepOutPG )
 {
 
    const double dh      = amr->dh[lv];
    const int    LocalID = PID % 8;
 
-// 1D arrays -> 3D arrays
-#  if ( MODEL == ELBDM )
-   typedef real (*der_in)[NCOMP_TOTAL][CUBE(ELBDM_DER_NXT)];
-#  else
-   typedef real (*der_in)[NCOMP_TOTAL][CUBE(DER_NXT)];
-#  endif
-   der_in FluIn = (der_in) Der_In;
 
 // prepare the input arrays
    if ( PrepFluIn )
@@ -524,12 +537,6 @@ void GetDerivedField( real *Der_In,
       const int  OPT__MAG_INT_SCHEME = INT_NONE;
 #     endif
 
-#     if ( MODEL == ELBDM )
-      Prepare_PatchData( lv, Time[lv], FluIn[0][0], NULL, ELBDM_DER_GHOST_SIZE, 1, &PID0,
-                                    _TOTAL, _NONE, OPT__FLU_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26,
-                                    IntPhase_No, OPT__BC_FLU, BC_POT_NONE, MinDens_No, MinPres_No, MinTemp_No, MinEntr_No,
-                                    DE_Consistency_No );
-#     endif
 //    always prepare all fields
       Prepare_PatchData( lv, Time[lv], FluIn[0][0], MagFC[0][0], DER_GHOST_SIZE, 1, &PID0,
                          _TOTAL, _MAG, OPT__FLU_INT_SCHEME, OPT__MAG_INT_SCHEME, UNIT_PATCH, NSIDE_26,
@@ -587,6 +594,65 @@ void GetDerivedField( real *Der_In,
 
       OutFieldIdx += NFieldOut;
    }
+
+#  ifdef SUPPORT_GRACKLE
+   if ( OPT__OUTPUT_GRACKLE_TEMP )
+   {
+      const int NFieldOut = 1;
+
+      if ( OutFieldIdx + NFieldOut > DER_NOUT_MAX )
+         Aux_Error( ERROR_INFO, "OutFieldIdx (%d) + NFieldOut (%d) > DER_NOUT_MAX (%d) !!\n",
+                    OutFieldIdx, NFieldOut, DER_NOUT_MAX );
+
+//    Grackle_Calculate() prepares the field one patch group at a time
+      const int PID0 = PID - LocalID;
+      if ( PrepOutPG )   Grackle_Calculate( Out_1PG[OutFieldIdx], _GRACKLE_TEMP, lv, 1, &PID0 );
+
+//    copy the corresponding patch from the already calculated patch group
+      const real *Out_1P = Out_1PG[OutFieldIdx] + LocalID*CUBE(PS1);
+      memcpy( Out[OutFieldIdx], Out_1P, sizeof(real)*CUBE(PS1) );
+
+      OutFieldIdx += NFieldOut;
+   }
+
+   if ( OPT__OUTPUT_GRACKLE_MU )
+   {
+      const int NFieldOut = 1;
+
+      if ( OutFieldIdx + NFieldOut > DER_NOUT_MAX )
+         Aux_Error( ERROR_INFO, "OutFieldIdx (%d) + NFieldOut (%d) > DER_NOUT_MAX (%d) !!\n",
+                    OutFieldIdx, NFieldOut, DER_NOUT_MAX );
+
+//    Grackle_Calculate prepares the field one patch group at a time
+      const int PID0 = PID - LocalID;
+      if ( PrepOutPG )   Grackle_Calculate( Out_1PG[OutFieldIdx], _GRACKLE_MU, lv, 1, &PID0 );
+
+//    copy the corresponding one patch from the already calculated patch group
+      const real *Out_1P = Out_1PG[OutFieldIdx] + LocalID*CUBE(PS1);
+      memcpy( Out[OutFieldIdx], Out_1P, sizeof(real)*CUBE(PS1) );
+
+      OutFieldIdx += NFieldOut;
+   }
+
+   if ( OPT__OUTPUT_GRACKLE_TCOOL )
+   {
+      const int NFieldOut = 1;
+
+      if ( OutFieldIdx + NFieldOut > DER_NOUT_MAX )
+         Aux_Error( ERROR_INFO, "OutFieldIdx (%d) + NFieldOut (%d) > DER_NOUT_MAX (%d) !!\n",
+                    OutFieldIdx, NFieldOut, DER_NOUT_MAX );
+
+//    Grackle_Calculate prepares the field one patch group at a time
+      const int PID0 = PID - LocalID;
+      if ( PrepOutPG )   Grackle_Calculate( Out_1PG[OutFieldIdx], _GRACKLE_TCOOL, lv, 1, &PID0 );
+
+//    copy the corresponding one patch from the already calculated patch group
+      const real *Out_1P = Out_1PG[OutFieldIdx] + LocalID*CUBE(PS1);
+      memcpy( Out[OutFieldIdx], Out_1P, sizeof(real)*CUBE(PS1) );
+
+      OutFieldIdx += NFieldOut;
+   }
+#  endif // #ifdef SUPPORT_GRACKLE
 #  endif // #if ( MODEL == HYDRO )
 
 #  if ( MODEL == ELBDM )
@@ -601,7 +667,7 @@ void GetDerivedField( real *Der_In,
          const int fv = v/3;
          const int vv = v%3;
          ELBDM_DerivedField( Out[OutFieldIdx], FluIn[LocalID][0],
-                             fv, vv, ELBDM_DER_GHOST_SIZE, dh );
+                             fv, vv, DER_GHOST_SIZE, dh );
          OutFieldIdx += 1;
       }
    }
@@ -612,7 +678,7 @@ void GetDerivedField( real *Der_In,
          Aux_Error( ERROR_INFO, "OutFieldIdx (%d) + NFieldOut (%d) > DER_NOUT_MAX (%d) !!\n",
                     OutFieldIdx, NFieldOut, DER_NOUT_MAX );
       ELBDM_DerivedField( Out[OutFieldIdx], FluIn[LocalID][0],
-                          2, 0, ELBDM_DER_GHOST_SIZE, dh);
+                          2, 0, DER_GHOST_SIZE, dh );
       OutFieldIdx += NFieldOut;
    }
    if ( OPT__OUTPUT_ELBDM_Q_STRESS )
@@ -625,7 +691,7 @@ void GetDerivedField( real *Der_In,
       {
          const int vv = v;;
          ELBDM_DerivedField( Out[OutFieldIdx], FluIn[LocalID][0],
-                             3, vv, ELBDM_DER_GHOST_SIZE, dh );
+                             3, vv, DER_GHOST_SIZE, dh );
          OutFieldIdx += 1;
       }
    }
