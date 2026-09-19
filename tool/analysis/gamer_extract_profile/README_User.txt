@@ -82,6 +82,8 @@ Version 1.0.3     08/23/2010
    -z    Z
          z coordinate of the center of the targeted sphere
 
+   -C    remove the center-of-mass velocity
+
 
 3. Usage demo:
 

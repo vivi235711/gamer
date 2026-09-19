@@ -3,6 +3,8 @@
 
 
 
+#include "Macro.h"
+
 #ifndef PARTICLE
 #  error : ERROR : PARTICLE is not defined !!
 #endif
@@ -36,9 +38,14 @@ void Aux_Error( const char *File, const int Line, const char *Func, const char *
 //                NPar_Inactive           : Total number of inactive particles in this MPI rank
 //                NPar_Lv                 : Total number of active particles at each level in this MPI rank
 //                Init                    : Initialization methods (1/2/3 --> call function/restart/load from file)
+//                FlagInit                : Assign this refinement flag to all particles for Init=1/3
+//                                          --> Set to PFLAG_MANUAL (defined in Macro.h) to disable this behavior, in which case
+//                                              the refinement flag must be set manually by a particle initializer (for Init=1)
+//                                              or loaded from the PAR_IC file (for Init=3)
 //                ParICFormat             : Data format of the particle initialization file (1=[att][id], 2=[id][att])
 //                ParICMass               : Assign this mass to all particles for Init=3
 //                ParICType               : Assign this type to all particles for Init=3
+//                ParICPUID               : Assign particle UID from the file to all particles for Init=3
 //                Interp                  : Mass/acceleration/velocity interpolation scheme (NGP,CIC,TSC)
 //                InterpTracer            : Mass/acceleration/velocity interpolation scheme for tracers (NGP,CIC,TSC)
 //                Integ                   : Integration scheme (PAR_INTEG_EULER, PAR_INTEG_KDK)
@@ -51,8 +58,14 @@ void Aux_Error( const char *File, const int Line, const char *Func, const char *
 //                                          the velocity gradient is large
 //                RemoveCell              : remove particles RemoveCell-base-level-cells away from the boundary
 //                                          (for non-periodic BC only)
-//                GhostSize               : Number of ghost zones required for interpolation scheme
-//                Attribute               : Pointer arrays to different particle attributes (Mass, Pos, Vel, ...)
+//                GhostSize               : Number of ghost zones required for the interpolation scheme of massive particles
+//                GhostSizeTracer         : Number of ghost zones required for the interpolation scheme of tracer  particles
+//                NextPUID                : Next new particle UID over all MPI ranks. The UID starts from 1.
+//                                          --> Some compilers initialize unassigned variables to 0.
+//                                              If a user forgets to assign `PUID` to `PUID_TBA`, we can easily detect incorrect behavior by checking if `PUID < 1`.
+//                                              Although we do have `Check_UniquePUID()` to verify uniqueness, it is not as efficient as this simple check.
+//                AttributeFlt            : Pointer arrays to different particle floating-point attributes (Mass, Pos, Vel, ...)
+//                AttributeInt            : Pointer arrays to different particle integer        attributes (Type, PUID, Flag)
 //                InactiveParList         : List of inactive particle IDs
 //                Mesh_Attr               : Pointer arrays to different mesh quantities mapped onto tracer particles
 //                Mesh_Attr_Num           : Number of mesh quantities mapped onto tracer particles
@@ -98,8 +111,10 @@ void Aux_Error( const char *File, const int Line, const char *Func, const char *
 //                Pos                     : Particle position
 //                Vel                     : Particle velocity
 //                Time                    : Particle physical time
-//                Type                    : Particle type (e.g., tracer, generic, dark matter, star)
 //                Acc                     : Particle acceleration (only when STORE_PAR_ACC is on)
+//                Type                    : Particle type (e.g., tracer, generic, dark matter, star)
+//                PUID                    : Particle UID
+//                Flag                    : Particle refinement flag
 //
 // Method      :  Particle_t        : Constructor
 //               ~Particle_t        : Destructor
@@ -120,9 +135,11 @@ struct Particle_t
    long          NPar_Inactive;
    long          NPar_Lv[NLEVEL];
    ParInit_t     Init;
+   int           FlagInit;
    ParICFormat_t ParICFormat;
    double        ParICMass;
    int           ParICType;
+   bool          ParICPUID;
    ParInteg_t    Integ;
    ParInterp_t   Interp;
    TracerInteg_t IntegTracer;
@@ -133,7 +150,9 @@ struct Particle_t
    double        RemoveCell;
    int           GhostSize;
    int           GhostSizeTracer;
-   real_par     *Attribute[PAR_NATT_TOTAL];
+   long          NextPUID;
+   real_par     *AttributeFlt[PAR_NATT_FLT_TOTAL];
+   long_par     *AttributeInt[PAR_NATT_INT_TOTAL];
    long         *InactiveParList;
    real_par    **Mesh_Attr;
    int           Mesh_Attr_Num;
@@ -171,12 +190,14 @@ struct Particle_t
    real_par     *VelY;
    real_par     *VelZ;
    real_par     *Time;
-   real_par     *Type;
 #  ifdef STORE_PAR_ACC
    real_par     *AccX;
    real_par     *AccY;
    real_par     *AccZ;
 #  endif
+   long_par     *Type;
+   long_par     *PUID;
+   long_par     *Flag;
 
 
    //===================================================================================
@@ -193,9 +214,11 @@ struct Particle_t
       NPar_Active_AllRank = -1;
       NPar_AcPlusInac     = -1;
       Init                = PAR_INIT_NONE;
+      FlagInit            = PFLAG_NO;
       ParICFormat         = PAR_IC_FORMAT_NONE;
       ParICMass           = -1.0;
       ParICType           = -1;
+      ParICPUID           = false;
       Interp              = PAR_INTERP_NONE;
       InterpTracer        = PAR_INTERP_NONE;
       Integ               = PAR_INTEG_NONE;
@@ -206,10 +229,13 @@ struct Particle_t
       RemoveCell          = -999.9;
       GhostSize           = -1;
       GhostSizeTracer     = -1;
+      NextPUID            = 1;
 
       for (int lv=0; lv<NLEVEL; lv++)  NPar_Lv[lv] = 0;
 
-      for (int v=0; v<PAR_NATT_TOTAL; v++)   Attribute[v] = NULL;
+      for (int v=0; v<PAR_NATT_FLT_TOTAL; v++)   AttributeFlt[v] = NULL;
+
+      for (int v=0; v<PAR_NATT_INT_TOTAL; v++)   AttributeInt[v] = NULL;
 
       InactiveParList = NULL;
       Mesh_Attr       = NULL;
@@ -253,12 +279,14 @@ struct Particle_t
       VelY = NULL;
       VelZ = NULL;
       Time = NULL;
-      Type = NULL;
 #     ifdef STORE_PAR_ACC
       AccX = NULL;
       AccY = NULL;
       AccZ = NULL;
 #     endif
+      Type = NULL;
+      PUID = NULL;
+      Flag = NULL;
 
    } // METHOD : Particle_t
 
@@ -273,8 +301,11 @@ struct Particle_t
    ~Particle_t()
    {
 
-      for (int v=0; v<PAR_NATT_TOTAL; v++)
-         if ( Attribute[v] != NULL )   free( Attribute[v] );
+      for (int v=0; v<PAR_NATT_FLT_TOTAL; v++)
+         if ( AttributeFlt[v] != NULL )   free( AttributeFlt[v] );
+
+      for (int v=0; v<PAR_NATT_INT_TOTAL; v++)
+         if ( AttributeInt[v] != NULL )   free( AttributeInt[v] );
 
       if ( InactiveParList != NULL )   free( InactiveParList );
 
@@ -323,6 +354,7 @@ struct Particle_t
    //                   --> Assuming no inactive particles (i.e., NPar_Inactive = 0)
    //                2. For LOAD_BALANCE, some lists recording the information for exchanging
    //                   particles between different ranks are also allocated here
+   //                3. Initialize built-in integer attributes (e.g., Type, PUID, Flag)
    //
    // Parameter   :  NPar_Input : Total number of active particles
    //                NRank      : Total number of MPI ranks
@@ -342,10 +374,15 @@ struct Particle_t
 
 //    allocate arrays (use malloc so that realloc can be used later to resize the array)
 //    --> free memory first since other functions (e.g., LB_Init_LoadBalance()) will call InitRepo() again
-      for (int v=0; v<PAR_NATT_TOTAL; v++)
+      for (int v=0; v<PAR_NATT_FLT_TOTAL; v++)
       {
-         if ( Attribute[v] != NULL )   free( Attribute[v] );
-         Attribute[v] = (real_par*)malloc( ParListSize*sizeof(real_par) );
+         if ( AttributeFlt[v] != NULL )   free( AttributeFlt[v] );
+         AttributeFlt[v] = (real_par*)malloc( ParListSize*sizeof(real_par) );
+      }
+      for (int v=0; v<PAR_NATT_INT_TOTAL; v++)
+      {
+         if ( AttributeInt[v] != NULL )   free( AttributeInt[v] );
+         AttributeInt[v] = (long_par*)malloc( ParListSize*sizeof(long_par) );
       }
 
       if ( InactiveParList != NULL )   free( InactiveParList );
@@ -388,20 +425,30 @@ struct Particle_t
 #     endif // #ifdef LOAD_BALANCE
 
 //    set pointers
-      Mass = Attribute[PAR_MASS];
-      PosX = Attribute[PAR_POSX];
-      PosY = Attribute[PAR_POSY];
-      PosZ = Attribute[PAR_POSZ];
-      VelX = Attribute[PAR_VELX];
-      VelY = Attribute[PAR_VELY];
-      VelZ = Attribute[PAR_VELZ];
-      Time = Attribute[PAR_TIME];
-      Type = Attribute[PAR_TYPE];
+      Mass = AttributeFlt[PAR_MASS];
+      PosX = AttributeFlt[PAR_POSX];
+      PosY = AttributeFlt[PAR_POSY];
+      PosZ = AttributeFlt[PAR_POSZ];
+      VelX = AttributeFlt[PAR_VELX];
+      VelY = AttributeFlt[PAR_VELY];
+      VelZ = AttributeFlt[PAR_VELZ];
+      Time = AttributeFlt[PAR_TIME];
 #     ifdef STORE_PAR_ACC
-      AccX = Attribute[PAR_ACCX];
-      AccY = Attribute[PAR_ACCY];
-      AccZ = Attribute[PAR_ACCZ];
+      AccX = AttributeFlt[PAR_ACCX];
+      AccY = AttributeFlt[PAR_ACCY];
+      AccZ = AttributeFlt[PAR_ACCZ];
 #     endif
+      Type = AttributeInt[PAR_TYPE];
+      PUID = AttributeInt[PAR_PUID];
+      Flag = AttributeInt[PAR_FLAG];
+
+//    initialize built-in integer attributes
+      for (long p=0; p<NPar_Input; p++)
+      {
+         Type[p] = PTYPE_TBA;
+         PUID[p] = PUID_TBA;
+         Flag[p] = PFLAG_TBA;
+      }
 
    } // METHOD : InitRepo
 
@@ -420,30 +467,45 @@ struct Particle_t
    //                4. Note that the global variable "AveDensity_Init" will NOT be recalculated
    //                   automatically here
    //
-   // Parameter   :  NewAtt : Array storing the attributes of new particles
+   // Parameter   :  NewAttFlt : Array storing the floating-point attributes of new particles
+   //                NewAttInt : Array storing the integer        attributes of new particles
    //
    // Return      :  Index of the new particle (ParID)
    //===================================================================================
-   long AddOneParticle( const real_par *NewAtt )
+   long AddOneParticle( const real_par *NewAttFlt, const long_par *NewAttInt )
    {
 
 //    check
 #     ifdef DEBUG_PARTICLE
       if ( NPar_AcPlusInac < 0 ) Aux_Error( ERROR_INFO, "NPar_AcPlusInac (%ld) < 0 !!\n", NPar_AcPlusInac );
 
-      if ( NewAtt == NULL )   Aux_Error( ERROR_INFO, "NewAtt == NULL !!\n" );
+      if ( NewAttFlt == NULL )   Aux_Error( ERROR_INFO, "NewAttFlt == NULL !!\n" );
 
-      if ( NewAtt[PAR_MASS] < (real_par)0.0 )
-         Aux_Error( ERROR_INFO, "Adding an inactive particle (mass = %21.14e) !!\n", NewAtt[PAR_MASS] );
+      if ( NewAttInt == NULL )   Aux_Error( ERROR_INFO, "NewAttInt == NULL !!\n" );
 
-      if ( NewAtt[PAR_POSX] != NewAtt[PAR_POSX] ||
-           NewAtt[PAR_POSY] != NewAtt[PAR_POSY] ||
-           NewAtt[PAR_POSZ] != NewAtt[PAR_POSZ]   )
+      if ( NewAttFlt[PAR_MASS] < (real_par)0.0 )
+         Aux_Error( ERROR_INFO, "Adding an inactive particle (mass = %21.14e) !!\n", NewAttFlt[PAR_MASS] );
+
+      if ( NewAttFlt[PAR_POSX] != NewAttFlt[PAR_POSX] ||
+           NewAttFlt[PAR_POSY] != NewAttFlt[PAR_POSY] ||
+           NewAttFlt[PAR_POSZ] != NewAttFlt[PAR_POSZ]   )
          Aux_Error( ERROR_INFO, "Adding a particle with strange position (%21.14e, %21.14e, %21.14e) !!\n",
-                    NewAtt[PAR_POSX], NewAtt[PAR_POSY], NewAtt[PAR_POSZ] );
+                    NewAttFlt[PAR_POSX], NewAttFlt[PAR_POSY], NewAttFlt[PAR_POSZ] );
 
-      if ( NewAtt[PAR_TYPE] < (real_par)0  ||  NewAtt[PAR_TYPE] >= (real_par)PAR_NTYPE )
-         Aux_Error( ERROR_INFO, "Incorrect particle type (%d) !!\n", (int)NewAtt[PAR_TYPE] );
+      if ( NewAttInt[PAR_TYPE] < (long_par)0  ||  NewAttInt[PAR_TYPE] >= (long_par)PAR_NTYPE )
+         Aux_Error( ERROR_INFO, "Incorrect particle type (%ld) !!\n", (long)NewAttInt[PAR_TYPE] );
+
+//    check whether the particle UID is valid
+//    a particle here can be either newly created or pre-existing
+//    --> newly created: must have particle UID == PUID_TBA
+//                       since Par_SetParUID() has not yet assigned it;
+//                       UID will not be decided here; the particle is added to the list
+//                       as PUID_TBA and assigned a proper UID later in Par_SetParUID()
+//    --> pre-existing : the particle UID must have been assigned by Par_SetParUID() and
+//                       lie within [1, NextPUID-1]
+      if ( ( NewAttInt[PAR_PUID] != PUID_TBA )  &&
+           ( NewAttInt[PAR_PUID] <= (long_par)0  ||  NewAttInt[PAR_PUID] >= NextPUID ) )
+         Aux_Error( ERROR_INFO, "Incorrect particle UID (%ld) !!\n", (long)NewAttInt[PAR_PUID] );
 #     endif
 
 
@@ -470,22 +532,25 @@ struct Particle_t
          {
             ParListSize = (int)ceil( PARLIST_GROWTH_FACTOR*(ParListSize+1) );
 
-            for (int v=0; v<PAR_NATT_TOTAL; v++)   Attribute[v] = (real_par*)realloc( Attribute[v], ParListSize*sizeof(real_par) );
+            for (int v=0; v<PAR_NATT_FLT_TOTAL; v++)   AttributeFlt[v] = (real_par*)realloc( AttributeFlt[v], ParListSize*sizeof(real_par) );
+            for (int v=0; v<PAR_NATT_INT_TOTAL; v++)   AttributeInt[v] = (long_par*)realloc( AttributeInt[v], ParListSize*sizeof(long_par) );
 
-            Mass = Attribute[PAR_MASS];
-            PosX = Attribute[PAR_POSX];
-            PosY = Attribute[PAR_POSY];
-            PosZ = Attribute[PAR_POSZ];
-            VelX = Attribute[PAR_VELX];
-            VelY = Attribute[PAR_VELY];
-            VelZ = Attribute[PAR_VELZ];
-            Time = Attribute[PAR_TIME];
-            Type = Attribute[PAR_TYPE];
+            Mass = AttributeFlt[PAR_MASS];
+            PosX = AttributeFlt[PAR_POSX];
+            PosY = AttributeFlt[PAR_POSY];
+            PosZ = AttributeFlt[PAR_POSZ];
+            VelX = AttributeFlt[PAR_VELX];
+            VelY = AttributeFlt[PAR_VELY];
+            VelZ = AttributeFlt[PAR_VELZ];
+            Time = AttributeFlt[PAR_TIME];
 #           ifdef STORE_PAR_ACC
-            AccX = Attribute[PAR_ACCX];
-            AccY = Attribute[PAR_ACCY];
-            AccZ = Attribute[PAR_ACCZ];
+            AccX = AttributeFlt[PAR_ACCX];
+            AccY = AttributeFlt[PAR_ACCY];
+            AccZ = AttributeFlt[PAR_ACCZ];
 #           endif
+            Type = AttributeInt[PAR_TYPE];
+            PUID = AttributeInt[PAR_PUID];
+            Flag = AttributeInt[PAR_FLAG];
          }
 
          ParID = NPar_AcPlusInac;
@@ -494,7 +559,8 @@ struct Particle_t
 
 
 //    2. record the data of new particles
-      for (int v=0; v<PAR_NATT_TOTAL; v++)   Attribute[v][ParID] = NewAtt[v];
+      for (int v=0; v<PAR_NATT_FLT_TOTAL; v++)   AttributeFlt[v][ParID] = NewAttFlt[v];
+      for (int v=0; v<PAR_NATT_INT_TOTAL; v++)   AttributeInt[v][ParID] = NewAttInt[v];
 
 
 //    3. update the total number of active particles (assuming all new particles are active)

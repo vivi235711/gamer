@@ -191,8 +191,9 @@ void LoadData_HDF5( const char *FileName )
          char Key[MaxString];
          sprintf( Key, "FieldLabel%02d", v );
 
-#        if ( MODEL == ELBDM)
-         if ( ELBDM_Scheme == 2  &&  v == 2 )   continue;
+#        if ( MODEL == ELBDM )
+//       ELBDM hybrid scheme only has density and phase
+         if ( ELBDM_Scheme == ELBDM_HYBRID  &&  v == 2 )   continue;
 #        endif
          LoadField( Key, &FieldName_In[v], H5_SetID_InputPara, H5_TypeID_InputPara, Fatal, NullPtr, -1, NonFatal );
       }
@@ -267,11 +268,10 @@ void LoadData_HDF5( const char *FileName )
          OutputParDens = 0;
 
 #     if   ( MODEL == HYDRO )
-      if ( OutputSphVel )  NOut += 3;
+                           NOut += 2;   // vtheta, vphi
 #     elif ( MODEL == MHD )
 #     elif ( MODEL == ELBDM )
-      if ( ELBDM_GetVir )  NOut += 8;
-      if ( OutputSphVel )  NOut += 6;
+      if ( ELBDM_GetVir )  NOut += 12;  // Ek_Lap, Ek_Gra, vr, vr_abs, vt_abs, wr, wr_abs, wt_abs, vtheta, vphi, wtheta, wphi
 #     else
 #     error : ERROR : unsupported MODEL !!
 #     endif // MODEL
@@ -398,7 +398,8 @@ void LoadData_HDF5( const char *FileName )
       for (int v=0; v<NCOMP_TOTAL; v++)
       {
 #        if ( MODEL == ELBDM )
-         if ( ELBDM_Scheme == 2  &&  v == 2 )   continue;
+//       ELBDM hybrid scheme only has density and phase
+         if ( ELBDM_Scheme == ELBDM_HYBRID  &&  v == 2 )   continue;
 #        endif
          sprintf( FieldName[v], "%s", FieldName_In[v] );
       }
@@ -460,7 +461,8 @@ void LoadData_HDF5( const char *FileName )
    for (int v=0; v<NCOMP_TOTAL; v++)
    {
 #     if ( MODEL == ELBDM )
-      if ( ELBDM_Scheme == 2  &&  v == 2 )   continue;
+//    ELBDM hybrid scheme only has density and phase
+      if ( ELBDM_Scheme == ELBDM_HYBRID  &&  v == 2 )   continue;
 #     endif
       H5_SetID_Field[v] = H5Dopen( H5_GroupID_GridData, FieldName[v], H5P_DEFAULT );
       if ( H5_SetID_Field[v] < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", FieldName[v] );
@@ -501,7 +503,8 @@ void LoadData_HDF5( const char *FileName )
    for (int v=0; v<NCOMP_TOTAL; v++)
    {
 #     if ( MODEL == ELBDM )
-      if ( ELBDM_Scheme == 2  &&  v == 2 )   continue;
+//    ELBDM hybrid scheme only has density and phase
+      if ( ELBDM_Scheme == ELBDM_HYBRID  &&  v == 2 )   continue;
 #     endif
       H5_Status = H5Dclose( H5_SetID_Field[v] );
    }
@@ -798,26 +801,26 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
       for (int v=0; v<NCOMP_TOTAL; v++)
       {
 #        if ( MODEL == ELBDM )
-         // Hybrid Scheme : Only has dens and phase parts
-         if ( ELBDM_Scheme == 2  &&  v == 2 )   continue;
+//       ELBDM hybrid scheme only has density and phase
+         if ( ELBDM_Scheme == ELBDM_HYBRID  &&  v == 2 )   continue;
 #        endif
          H5_Status = H5Dread( H5_SetID_Field[v], H5T_GAMER_REAL, H5_MemID_Field, H5_SpaceID_Field, H5P_DEFAULT,
                               amr.patch[lv][PID]->fluid[v] );
          if ( H5_Status < 0 )
             Aux_Error( ERROR_INFO, "failed to load a field variable (lv %d, GID %d, v %d) !!\n", lv, GID, v );
       }
-      // Transfer dens and phase to real and imag
+
 #     if ( MODEL == ELBDM )
-      if ( ELBDM_Scheme == 2 )
-      {  
-         real Dens, Phas, Im, Re;
+//    for the hybrid scheme, transfer density and phase to the real and imaginary parts
+      if ( ELBDM_Scheme == ELBDM_HYBRID )
+      {
          for (int k=0; k<PATCH_SIZE; k++) {
          for (int j=0; j<PATCH_SIZE; j++) {
          for (int i=0; i<PATCH_SIZE; i++) {
-            Dens = amr.patch[lv][PID]->fluid[0][k][j][i];
-            Phas = amr.patch[lv][PID]->fluid[1][k][j][i];
-            Im   = SQRT(Dens) * SIN(Phas);
-            Re   = SQRT(Dens) * COS(Phas);
+            const real Dens = amr.patch[lv][PID]->fluid[0][k][j][i];
+            const real Phas = amr.patch[lv][PID]->fluid[1][k][j][i];
+            const real Im   = SQRT(Dens) * SIN(Phas);
+            const real Re   = SQRT(Dens) * COS(Phas);
             amr.patch[lv][PID]->fluid[IMAG][k][j][i] = Im;
             amr.patch[lv][PID]->fluid[REAL][k][j][i] = Re;
          }}}

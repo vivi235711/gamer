@@ -32,11 +32,13 @@ double               Time_Prev            [NLEVEL];
 double               FlagTable_Rho        [NLEVEL-1];
 double               FlagTable_RhoGradient[NLEVEL-1];
 double               FlagTable_Lohner     [NLEVEL-1][5];
+double               FlagTable_Angular    [NLEVEL-1][3];
+double               FlagTable_Radial     [NLEVEL-1];
 double              *FlagTable_User       [NLEVEL-1];
 double              *DumpTable = NULL;
 int                  DumpTable_NDump;
 int                 *UM_IC_RefineRegion = NULL;
-long                 FixUpVar_Flux, FixUpVar_Restrict;
+long                 FixUpVar_Flux, FixUpVar_Restrict, PassiveFloorMask;
 int                  PassiveNorm_NVar, PassiveNorm_VarIdx[NCOMP_PASSIVE];
 int                  PassiveIntFrac_NVar, PassiveIntFrac_VarIdx[NCOMP_PASSIVE];
 int                  StrLen_Flt;
@@ -58,7 +60,7 @@ double               AUTO_REDUCE_INT_MONO_FACTOR, AUTO_REDUCE_INT_MONO_MIN;
 double               OPT__CK_MEMFREE, INT_MONO_COEFF, UNIT_L, UNIT_M, UNIT_T, UNIT_V, UNIT_D, UNIT_E, UNIT_P;
 int                  OPT__UM_IC_LEVEL, OPT__UM_IC_NLEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__GPUID_SELECT, OPT__PATCH_COUNT;
 int                  INIT_DUMPID, INIT_SUBSAMPLING_NCELL, OPT__TIMING_BARRIER, OPT__REUSE_MEMORY, RESTART_LOAD_NRANK;
-bool                 OPT__FLAG_RHO, OPT__FLAG_RHO_GRADIENT, OPT__FLAG_USER, OPT__FLAG_LOHNER_DENS, OPT__FLAG_REGION;
+bool                 OPT__FLAG_RHO, OPT__FLAG_RHO_GRADIENT, OPT__FLAG_USER, OPT__FLAG_LOHNER_DENS, OPT__FLAG_REGION, OPT__FLAG_ANGULAR, OPT__FLAG_RADIAL;
 int                  OPT__FLAG_USER_NUM, MONO_MAX_ITER, OPT__RESET_FLUID_INIT;
 bool                 OPT__DT_USER, OPT__RECORD_DT, OPT__RECORD_MEMORY, OPT__MEMORY_POOL, OPT__RESTART_RESET;
 bool                 OPT__FIXUP_RESTRICT, OPT__INIT_RESTRICT, OPT__VERBOSE, OPT__MANUAL_CONTROL, OPT__UNIT;
@@ -71,10 +73,14 @@ bool                 OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_
 bool                 OPT__RECORD_NOTE, OPT__RECORD_UNPHY, INT_OPP_SIGN_0TH_ORDER;
 bool                 OPT__INT_FRAC_PASSIVE_LR, OPT__CK_INPUT_FLUID, OPT__SORT_PATCH_BY_LBIDX;
 char                 OPT__OUTPUT_TEXT_FORMAT_FLT[MAX_STRING];
+int                  OPT__OUTPUT_TEXT_LENGTH_INT;
 int                  OPT__UM_IC_FLOAT8;
 double               COM_CEN_X, COM_CEN_Y, COM_CEN_Z, COM_MAX_R, COM_MIN_RHO, COM_TOLERR_R;
 int                  COM_MAX_ITER;
 double               ANGMOM_ORIGIN_X, ANGMOM_ORIGIN_Y, ANGMOM_ORIGIN_Z;
+char                 OUTPUT_DIR[MAX_STRING];
+double               FLAG_ANGULAR_CEN_X, FLAG_ANGULAR_CEN_Y, FLAG_ANGULAR_CEN_Z;
+double               FLAG_RADIAL_CEN_X, FLAG_RADIAL_CEN_Y, FLAG_RADIAL_CEN_Z;
 
 UM_IC_Format_t       OPT__UM_IC_FORMAT;
 TestProbID_t         TESTPROB_ID;
@@ -86,6 +92,9 @@ OptFluBC_t           OPT__BC_FLU[6];
 OptLohnerForm_t      OPT__FLAG_LOHNER_FORM;
 OptCorrAfterSync_t   OPT__CORR_AFTER_ALL_SYNC;
 OptTimeStepLevel_t   OPT__DT_LEVEL;
+
+bool                 ConRefInitialized = false;
+double               ConRef[1+NCONREF_MAX]; // time + conserved variables
 
 
 // 2. global variables for different applications
@@ -114,7 +123,7 @@ bool                 OPT__FIXUP_ELECTRIC, OPT__CK_INTERFACE_B, OPT__OUTPUT_CC_MA
 bool                 OPT__OUTPUT_DIVMAG;
 int                  OPT__CK_DIVERGENCE_B;
 double               UNIT_B;
-bool                 OPT__SAME_INTERFACE_B;
+SameInterfaceB_t     OPT__SAME_INTERFACE_B;
 
 OptInitMagByVecPot_t OPT__INIT_BFIELD_BYVECPOT;
 #endif
@@ -150,6 +159,8 @@ double               DT__HYBRID_CFL, DT__HYBRID_CFL_INIT, DT__HYBRID_VELOCITY, D
 double               ELBDM_LAMBDA;
 #endif
 ELBDMRemoveMotionCM_t ELBDM_REMOVE_MOTION_CM;
+bool                 ELBDM_RESCALE_MASS_ERROR;
+int                  ELBDM_RESCALE_MASS_STEPS;
 bool                 ELBDM_BASE_SPECTRAL;
 
 #else
@@ -219,10 +230,12 @@ bool                 FFTW3_Double_OMP_Enabled, FFTW3_Single_OMP_Enabled;
 // (2-5) particle
 #ifdef PARTICLE
 double               DT__PARVEL, DT__PARVEL_MAX, DT__PARACC;
-bool                 OPT__CK_PARTICLE, OPT__FLAG_NPAR_CELL, OPT__FLAG_PAR_MASS_CELL, OPT__FREEZE_PAR, OPT__OUTPUT_PAR_MESH;
-int                  OPT__OUTPUT_PAR_MODE, OPT__PARTICLE_COUNT, OPT__FLAG_NPAR_PATCH, PAR_IC_FLOAT8, FlagTable_NParPatch[NLEVEL-1], FlagTable_NParCell[NLEVEL-1];
+bool                 OPT__CK_PARTICLE, OPT__FLAG_NPAR_CELL, OPT__FLAG_PAR_MASS_CELL, OPT__FREEZE_PAR, OPT__OUTPUT_PAR_MESH, OPT__PAR_INIT_CHECK;
+bool                 OPT__FLAG_PAR_TARGET_SIB;
+int                  OPT__OUTPUT_PAR_MODE, OPT__PARTICLE_COUNT, OPT__FLAG_NPAR_PATCH, PAR_IC_FLOAT8, PAR_IC_INT8, FlagTable_NParPatch[NLEVEL-1], FlagTable_NParCell[NLEVEL-1];
 double               FlagTable_ParMassCell[NLEVEL-1];
 ParOutputDens_t      OPT__OUTPUT_PAR_DENS;
+FlagParTarget_t      OPT__FLAG_PAR_TARGET;
 #endif
 
 // (2-6) yt inline analysis
@@ -240,6 +253,9 @@ bool                 YT_JUPYTER_USE_CONNECTION_FILE;
 #ifdef SUPPORT_GRACKLE
 bool                 GRACKLE_ACTIVATE;
 bool                 GRACKLE_VERBOSE;
+#ifndef COMOVING
+double               GRACKLE_REDSHIFT;
+#endif
 bool                 GRACKLE_COOLING;
 GracklePriChe_t      GRACKLE_PRIMORDIAL;
 bool                 GRACKLE_METAL;
@@ -251,8 +267,20 @@ char                 GRACKLE_CLOUDY_TABLE[MAX_STRING];
 int                  GRACKLE_THREE_BODY_RATE;
 bool                 GRACKLE_CIE_COOLING;
 int                  GRACKLE_H2_OPA_APPROX;
+bool                 GRACKLE_USE_V_HEATING_RATE;
+bool                 GRACKLE_USE_S_HEATING_RATE;
+int                  GRACKLE_USE_TEMP_FLOOR;
+double               GRACKLE_TEMP_FLOOR_SCALAR;
+double               GRACKLE_HYDROGEN_MFRAC;
+bool                 OPT__UNFREEZE_GRACKLE;
+bool                 OPT__OUTPUT_GRACKLE_TEMP;
+bool                 OPT__OUTPUT_GRACKLE_MU;
+bool                 OPT__OUTPUT_GRACKLE_TCOOL;
+bool                 OPT__FLAG_COOLING_LEN;
+double               FlagTable_CoolingLen[NLEVEL-1];
+double               DT__GRACKLE_COOLING;
 int                  CHE_GPU_NPGROUP;
-#endif
+#endif // #ifdef SUPPORT_GRACKLE
 
 // (2-8) star formation
 #ifdef STAR_FORMATION
@@ -312,6 +340,10 @@ SrcTerms_t SrcTerms;
 double     Src_Dlep_AuxArray_Flt[SRC_NAUX_DLEP];
 int        Src_Dlep_AuxArray_Int[SRC_NAUX_DLEP];
 #endif
+#ifdef EXACT_COOLING
+double     Src_EC_AuxArray_Flt[SRC_NAUX_EC];
+int        Src_EC_AuxArray_Int[SRC_NAUX_EC];
+#endif
 double     Src_User_AuxArray_Flt[SRC_NAUX_USER];
 int        Src_User_AuxArray_Int[SRC_NAUX_USER];
 
@@ -363,77 +395,77 @@ double CR_DIFF_MIN_B;
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // =======================================================================================================
 // (3-1) fluid solver
-real (*h_Flu_Array_F_In [2])[FLU_NIN ][ CUBE(FLU_NXT) ]            = { NULL, NULL };
-real (*h_Flu_Array_F_Out[2])[FLU_NOUT][ CUBE(PS2) ]                = { NULL, NULL };
-real (*h_Flux_Array[2])[9][NFLUX_TOTAL][ SQR(PS2) ]                = { NULL, NULL };
-double (*h_Corner_Array_F[2])[3]                                   = { NULL, NULL };
+real (*h_Flu_Array_F_In [2])[FLU_NIN ][ CUBE(FLU_NXT) ]              = { NULL, NULL };
+real (*h_Flu_Array_F_Out[2])[FLU_NOUT][ CUBE(PS2) ]                  = { NULL, NULL };
+real (*h_Flux_Array[2])[9][NFLUX_TOTAL][ SQR(PS2) ]                  = { NULL, NULL };
+double (*h_Corner_Array_F[2])[3]                                     = { NULL, NULL };
 #ifdef DUAL_ENERGY
-char (*h_DE_Array_F_Out[2])[ CUBE(PS2) ]                           = { NULL, NULL };
+char (*h_DE_Array_F_Out[2])[ CUBE(PS2) ]                             = { NULL, NULL };
 #endif
 #ifdef MHD
-real (*h_Mag_Array_F_In [2])[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ] = { NULL, NULL };
-real (*h_Mag_Array_F_Out[2])[NCOMP_MAG][ PS2P1*SQR(PS2)          ] = { NULL, NULL };
-real (*h_Ele_Array      [2])[9][NCOMP_ELE][ PS2P1*PS2 ]            = { NULL, NULL };
+real (*h_Mag_Array_F_In [2])[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]   = { NULL, NULL };
+real (*h_Mag_Array_F_Out[2])[NCOMP_MAG][ PS2P1*SQR(PS2)          ]   = { NULL, NULL };
+real (*h_Ele_Array      [2])[9][NCOMP_ELE][ PS2P1*PS2 ]              = { NULL, NULL };
 #endif
 #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
-real (*h_PriVar)      [NCOMP_LR            ][ CUBE(FLU_NXT)     ]  = NULL;
-real (*h_Slope_PPM)[3][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ]  = NULL;
-real (*h_FC_Var)   [6][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR)    ]  = NULL;
-real (*h_FC_Flux)  [3][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX)   ]  = NULL;
+real (*h_PriVar)      [NCOMP_LR            ][ CUBE(FLU_NXT)     ]    = NULL;
+real (*h_Slope_PPM)[3][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ]    = NULL;
+real (*h_FC_Var)   [6][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR)    ]    = NULL;
+real (*h_FC_Flux)  [3][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX)   ]    = NULL;
 #ifdef MHD
-real (*h_FC_Mag_Half)[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]        = NULL;
-real (*h_EC_Ele     )[NCOMP_MAG][ CUBE(N_EC_ELE)          ]        = NULL;
+real (*h_FC_Mag_Half)[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]          = NULL;
+real (*h_EC_Ele     )[NCOMP_MAG][ CUBE(N_EC_ELE)          ]          = NULL;
 #endif
 #endif // FLU_SCHEME
 #if ( MODEL == ELBDM )
-bool  (*h_IsCompletelyRefined[2])                                  = { NULL, NULL };
+bool  (*h_IsCompletelyRefined[2])                                    = { NULL, NULL };
 #endif
 #if ( ELBDM_SCHEME == ELBDM_HYBRID )
-bool (*h_HasWaveCounterpart[2])[ CUBE(HYB_NXT) ]                   = { NULL, NULL };
+bool (*h_HasWaveCounterpart[2])[ CUBE(HYB_NXT) ]                     = { NULL, NULL };
 #endif
 #if ( GRAMFE_SCHEME == GRAMFE_MATMUL )
-gramfe_matmul_float (*h_GramFE_TimeEvo)[ 2*FLU_NXT ]               = NULL;
+gramfe_matmul_float (*h_GramFE_TimeEvo)[ 2*FLU_NXT ]                 = NULL;
 #endif
 
 #ifdef GRAVITY
 // (3-2) Poisson and gravity solver
-real   (*h_Rho_Array_P     [2])[RHO_NXT][RHO_NXT][RHO_NXT]         = { NULL, NULL };
-real   (*h_Pot_Array_P_In  [2])[POT_NXT][POT_NXT][POT_NXT]         = { NULL, NULL };
-real   (*h_Pot_Array_P_Out [2])[GRA_NXT][GRA_NXT][GRA_NXT]         = { NULL, NULL };
-real   (*h_Flu_Array_G     [2])[GRA_NIN][PS1][PS1][PS1]            = { NULL, NULL };
-double (*h_Corner_Array_PGT[2])[3]                                 = { NULL, NULL };
+real   (*h_Rho_Array_P     [2])[RHO_NXT][RHO_NXT][RHO_NXT]           = { NULL, NULL };
+real   (*h_Pot_Array_P_In  [2])[POT_NXT][POT_NXT][POT_NXT]           = { NULL, NULL };
+real   (*h_Pot_Array_P_Out [2])[GRA_NXT][GRA_NXT][GRA_NXT]           = { NULL, NULL };
+real   (*h_Flu_Array_G     [2])[GRA_NIN][PS1][PS1][PS1]              = { NULL, NULL };
+double (*h_Corner_Array_PGT[2])[3]                                   = { NULL, NULL };
 #ifdef DUAL_ENERGY
-char   (*h_DE_Array_G      [2])[PS1][PS1][PS1]                     = { NULL, NULL };
+char   (*h_DE_Array_G      [2])[PS1][PS1][PS1]                       = { NULL, NULL };
 #endif
 #ifdef MHD
-real   (*h_Emag_Array_G    [2])[PS1][PS1][PS1]                     = { NULL, NULL };
+real   (*h_Emag_Array_G    [2])[PS1][PS1][PS1]                       = { NULL, NULL };
 #endif
-real    *h_ExtPotTable                                             = NULL;
-void   **h_ExtPotGenePtr                                           = NULL;
+real    *h_ExtPotTable                                               = NULL;
+void   **h_ExtPotGenePtr                                             = NULL;
 
 // (3-3) unsplit gravity correction
 #ifdef UNSPLIT_GRAVITY
-real (*h_Pot_Array_USG_F[2])[ CUBE(USG_NXT_F) ]                    = { NULL, NULL };
-real (*h_Pot_Array_USG_G[2])[USG_NXT_G][USG_NXT_G][USG_NXT_G]      = { NULL, NULL };
-real (*h_Flu_Array_USG_G[2])[GRA_NIN-1][PS1][PS1][PS1]             = { NULL, NULL };
+real (*h_Pot_Array_USG_F[2])[ CUBE(USG_NXT_F) ]                      = { NULL, NULL };
+real (*h_Pot_Array_USG_G[2])[USG_NXT_G][USG_NXT_G][USG_NXT_G]        = { NULL, NULL };
+real (*h_Flu_Array_USG_G[2])[GRA_NIN-1][PS1][PS1][PS1]               = { NULL, NULL };
 #endif
 #endif // #ifdef GRAVITY
 
 // (3-4) Grackle chemistry
 #ifdef SUPPORT_GRACKLE
-real (*h_Che_Array[2])                                             = { NULL, NULL };
-grackle_field_data *Che_FieldData                                  = NULL;
+real_che (*h_Che_Array[2])                                           = { NULL, NULL };
+grackle_field_data *Che_FieldData                                    = NULL;
 code_units Che_Units;
 #endif
 
 // (3-5) dt solver
-real  *h_dt_Array_T[2]                                             = { NULL, NULL };
-real (*h_Flu_Array_T[2])[FLU_NIN_T][ CUBE(PS1) ]                   = { NULL, NULL };
+real  *h_dt_Array_T[2]                                               = { NULL, NULL };
+real (*h_Flu_Array_T[2])[FLU_NIN_T][ CUBE(PS1) ]                     = { NULL, NULL };
 #ifdef GRAVITY
-real (*h_Pot_Array_T[2])[ CUBE(GRA_NXT) ]                          = { NULL, NULL };
+real (*h_Pot_Array_T[2])[ CUBE(GRA_NXT) ]                            = { NULL, NULL };
 #endif
 #ifdef MHD
-real (*h_Mag_Array_T[2])[NCOMP_MAG][ PS1P1*SQR(PS1) ]              = { NULL, NULL };
+real (*h_Mag_Array_T[2])[NCOMP_MAG][ PS1P1*SQR(PS1) ]                = { NULL, NULL };
 #endif
 
 // (3-6) EoS tables
@@ -442,15 +474,20 @@ real *h_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 // (3-7) source terms
-real (*h_Flu_Array_S_In [2])[FLU_NIN_S ][ CUBE(SRC_NXT)  ]         = { NULL, NULL };
-real (*h_Flu_Array_S_Out[2])[FLU_NOUT_S][ CUBE(PS1)      ]         = { NULL, NULL };
+real   (*h_Flu_Array_S_In [2])[FLU_NIN_S ][ CUBE(SRC_NXT)  ]         = { NULL, NULL };
+real   (*h_Flu_Array_S_Out[2])[FLU_NOUT_S][ CUBE(PS1)      ]         = { NULL, NULL };
 #ifdef MHD
-real (*h_Mag_Array_S_In [2])[NCOMP_MAG][ SRC_NXT_P1*SQR(SRC_NXT) ] = { NULL, NULL };
+real   (*h_Mag_Array_S_In [2])[NCOMP_MAG][ SRC_NXT_P1*SQR(SRC_NXT) ] = { NULL, NULL };
 #endif
-double (*h_Corner_Array_S[2])[3]                                   = { NULL, NULL };
+double (*h_Corner_Array_S[2])[3]                                     = { NULL, NULL };
 #if ( MODEL == HYDRO )
-real (*h_SrcDlepProf_Data)[SRC_DLEP_PROF_NBINMAX]                  = NULL;
-real  *h_SrcDlepProf_Radius                                        = NULL;
+real   (*h_SrcDlepProf_Data)[SRC_DLEP_PROF_NBINMAX]                  = NULL;
+real    *h_SrcDlepProf_Radius                                        = NULL;
+#endif
+#ifdef EXACT_COOLING
+double  *h_SrcEC_TEF_lambda                                          = NULL;
+double  *h_SrcEC_TEF_alpha                                           = NULL;
+double  *h_SrcEC_TEFc                                                = NULL;
 #endif
 
 
@@ -459,72 +496,72 @@ real  *h_SrcDlepProf_Radius                                        = NULL;
 // =======================================================================================================
 #ifdef GPU
 // (4-1) fluid solver
-real (*d_Flu_Array_F_In )[FLU_NIN ][ CUBE(FLU_NXT) ]               = NULL;
-real (*d_Flu_Array_F_Out)[FLU_NOUT][ CUBE(PS2) ]                   = NULL;
-real (*d_Flux_Array)[9][NFLUX_TOTAL][ SQR(PS2) ]                   = NULL;
-double (*d_Corner_Array_F)[3]                                      = NULL;
+real (*d_Flu_Array_F_In )[FLU_NIN ][ CUBE(FLU_NXT) ]                 = NULL;
+real (*d_Flu_Array_F_Out)[FLU_NOUT][ CUBE(PS2) ]                     = NULL;
+real (*d_Flux_Array)[9][NFLUX_TOTAL][ SQR(PS2) ]                     = NULL;
+double (*d_Corner_Array_F)[3]                                        = NULL;
 #ifdef DUAL_ENERGY
-char (*d_DE_Array_F_Out)[ CUBE(PS2) ]                              = NULL;
+char (*d_DE_Array_F_Out)[ CUBE(PS2) ]                                = NULL;
 #endif
 #ifdef MHD
-real (*d_Mag_Array_F_In )[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]    = NULL;
-real (*d_Mag_Array_F_Out)[NCOMP_MAG][ PS2P1*SQR(PS2)          ]    = NULL;
-real (*d_Ele_Array      )[9][NCOMP_ELE][ PS2P1*PS2 ]               = NULL;
+real (*d_Mag_Array_F_In )[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]      = NULL;
+real (*d_Mag_Array_F_Out)[NCOMP_MAG][ PS2P1*SQR(PS2)          ]      = NULL;
+real (*d_Ele_Array      )[9][NCOMP_ELE][ PS2P1*PS2 ]                 = NULL;
 #endif
 #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
-real (*d_PriVar)      [NCOMP_LR            ][ CUBE(FLU_NXT)     ]  = NULL;
-real (*d_Slope_PPM)[3][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ]  = NULL;
-real (*d_FC_Var)   [6][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR)    ]  = NULL;
-real (*d_FC_Flux)  [3][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX)   ]  = NULL;
+real (*d_PriVar)      [NCOMP_LR            ][ CUBE(FLU_NXT)     ]    = NULL;
+real (*d_Slope_PPM)[3][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ]    = NULL;
+real (*d_FC_Var)   [6][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR)    ]    = NULL;
+real (*d_FC_Flux)  [3][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX)   ]    = NULL;
 #ifdef MHD
-real (*d_FC_Mag_Half)[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]        = NULL;
-real (*d_EC_Ele     )[NCOMP_MAG][ CUBE(N_EC_ELE)          ]        = NULL;
+real (*d_FC_Mag_Half)[NCOMP_MAG][ FLU_NXT_P1*SQR(FLU_NXT) ]          = NULL;
+real (*d_EC_Ele     )[NCOMP_MAG][ CUBE(N_EC_ELE)          ]          = NULL;
 #endif
 #endif // FLU_SCHEME
 #if ( MODEL == ELBDM )
-bool  (*d_IsCompletelyRefined)                                     = NULL;
+bool  (*d_IsCompletelyRefined)                                       = NULL;
 #endif
 #if ( ELBDM_SCHEME == ELBDM_HYBRID )
-bool (*d_HasWaveCounterpart)[ CUBE(HYB_NXT) ]                      = NULL;
+bool (*d_HasWaveCounterpart)[ CUBE(HYB_NXT) ]                        = NULL;
 #endif
 #if ( GRAMFE_SCHEME == GRAMFE_MATMUL )
-gramfe_matmul_float (*d_Flu_TimeEvo)[ 2*FLU_NXT ]                  = NULL;
+gramfe_matmul_float (*d_Flu_TimeEvo)[ 2*FLU_NXT ]                    = NULL;
 #endif
 
 #ifdef GRAVITY
 // (4-2) Poisson and gravity solver
-real   (*d_Rho_Array_P    )[ CUBE(RHO_NXT) ]                       = NULL;
-real   (*d_Pot_Array_P_In )[ CUBE(POT_NXT) ]                       = NULL;
-real   (*d_Pot_Array_P_Out)[ CUBE(GRA_NXT) ]                       = NULL;
-real   (*d_Flu_Array_G    )[GRA_NIN][ CUBE(PS1) ]                  = NULL;
-double (*d_Corner_Array_PGT)[3]                                    = NULL;
+real   (*d_Rho_Array_P    )[ CUBE(RHO_NXT) ]                         = NULL;
+real   (*d_Pot_Array_P_In )[ CUBE(POT_NXT) ]                         = NULL;
+real   (*d_Pot_Array_P_Out)[ CUBE(GRA_NXT) ]                         = NULL;
+real   (*d_Flu_Array_G    )[GRA_NIN][ CUBE(PS1) ]                    = NULL;
+double (*d_Corner_Array_PGT)[3]                                      = NULL;
 #ifdef DUAL_ENERGY
-char   (*d_DE_Array_G     )[ CUBE(PS1) ]                           = NULL;
+char   (*d_DE_Array_G     )[ CUBE(PS1) ]                             = NULL;
 #endif
 #ifdef MHD
-real   (*d_Emag_Array_G   )[ CUBE(PS1) ]                           = NULL;
+real   (*d_Emag_Array_G   )[ CUBE(PS1) ]                             = NULL;
 #endif
-real    *d_ExtPotTable                                             = NULL;
-void   **d_ExtPotGenePtr                                           = NULL;
+real    *d_ExtPotTable                                               = NULL;
+void   **d_ExtPotGenePtr                                             = NULL;
 
 // (4-3) unsplit gravity correction
 #ifdef UNSPLIT_GRAVITY
-real (*d_Pot_Array_USG_F)[ CUBE(USG_NXT_F) ]                       = NULL;
-real (*d_Pot_Array_USG_G)[ CUBE(USG_NXT_G) ]                       = NULL;
-real (*d_Flu_Array_USG_G)[GRA_NIN-1][ CUBE(PS1) ]                  = NULL;
+real (*d_Pot_Array_USG_F)[ CUBE(USG_NXT_F) ]                         = NULL;
+real (*d_Pot_Array_USG_G)[ CUBE(USG_NXT_G) ]                         = NULL;
+real (*d_Flu_Array_USG_G)[GRA_NIN-1][ CUBE(PS1) ]                    = NULL;
 #endif
 #endif // #ifdef GRAVITY
 
 // (4-4) Grackle chemistry
 
 // (4-5) dt solver
-real *d_dt_Array_T                                                 = NULL;
-real (*d_Flu_Array_T)[FLU_NIN_T][ CUBE(PS1) ]                      = NULL;
+real *d_dt_Array_T                                                   = NULL;
+real (*d_Flu_Array_T)[FLU_NIN_T][ CUBE(PS1) ]                        = NULL;
 #ifdef GRAVITY
-real (*d_Pot_Array_T)[ CUBE(GRA_NXT) ]                             = NULL;
+real (*d_Pot_Array_T)[ CUBE(GRA_NXT) ]                               = NULL;
 #endif
 #ifdef MHD
-real (*d_Mag_Array_T)[NCOMP_MAG][ PS1P1*SQR(PS1) ]                 = NULL;
+real (*d_Mag_Array_T)[NCOMP_MAG][ PS1P1*SQR(PS1) ]                   = NULL;
 #endif
 
 // (4-6) EoS tables
@@ -533,15 +570,20 @@ real *d_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 // (4-7) source terms
-real (*d_Flu_Array_S_In )[FLU_NIN_S ][ CUBE(SRC_NXT)  ]            = NULL;
-real (*d_Flu_Array_S_Out)[FLU_NOUT_S][ CUBE(PS1)      ]            = NULL;
+real   (*d_Flu_Array_S_In )[FLU_NIN_S ][ CUBE(SRC_NXT)  ]            = NULL;
+real   (*d_Flu_Array_S_Out)[FLU_NOUT_S][ CUBE(PS1)      ]            = NULL;
 #ifdef MHD
-real (*d_Mag_Array_S_In)[NCOMP_MAG  ][ SRC_NXT_P1*SQR(SRC_NXT) ]   = NULL;
+real   (*d_Mag_Array_S_In)[NCOMP_MAG  ][ SRC_NXT_P1*SQR(SRC_NXT) ]   = NULL;
 #endif
-double (*d_Corner_Array_S)[3]                                      = NULL;
+double (*d_Corner_Array_S)[3]                                        = NULL;
 #if ( MODEL == HYDRO )
-real (*d_SrcDlepProf_Data)[SRC_DLEP_PROF_NBINMAX]                  = NULL;
-real  *d_SrcDlepProf_Radius                                        = NULL;
+real   (*d_SrcDlepProf_Data)[SRC_DLEP_PROF_NBINMAX]                  = NULL;
+real    *d_SrcDlepProf_Radius                                        = NULL;
+#endif
+#ifdef EXACT_COOLING
+double  *d_SrcEC_TEF_lambda                                          = NULL;
+double  *d_SrcEC_TEF_alpha                                           = NULL;
+double  *d_SrcEC_TEFc                                                = NULL;
 #endif
 
 #endif // #ifdef GPU
@@ -616,8 +658,6 @@ int main( int argc, char *argv[] )
 #     endif
    }
 
-   Output_DumpData( 0 );
-
    if ( OPT__PATCH_COUNT > 0 )            Aux_Record_PatchCount();
    if ( OPT__RECORD_MEMORY )              Aux_GetMemInfo();
    if ( OPT__RECORD_USER ) {
@@ -636,6 +676,9 @@ int main( int argc, char *argv[] )
 #  endif
 
    Aux_Check();
+
+// must be called after Aux_Check() to obtain the reference conserved values (ConRef_*) first
+   Output_DumpData( 0 );
 
 #  if ( MODEL == ELBDM )
    if (  ( ELBDM_REMOVE_MOTION_CM == ELBDM_REMOVE_MOTION_CM_INIT && (OPT__INIT != INIT_BY_RESTART || OPT__RESTART_RESET) )  ||
@@ -687,14 +730,17 @@ int main( int argc, char *argv[] )
       if ( OPT__CORR_AFTER_ALL_SYNC == CORR_AFTER_SYNC_EVERY_STEP )
       TIMING_FUNC(   Flu_CorrAfterAllSync(),          Timer_Main[6],   TIMER_ON   );
 
-#     if ( MODEL == HYDRO  &&  defined MHD )
-      if ( OPT__SAME_INTERFACE_B )
+//    it may be unnecessary to call MHD_SameInterfaceB() here, since we already call it every sub-step
+//    in EvolveLevel() after the fluid solver and fix-up operations
+#     ifdef MHD
+      if ( OPT__SAME_INTERFACE_B == SAME_INTERFACE_B_YES )
       {
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )
             Aux_Message( stdout, "   MHD_SameInterfaceB                       ... " );
 
          for (int lv=0; lv<NLEVEL; lv++)
-         TIMING_FUNC(   MHD_SameInterfaceB( lv ),     Timer_Main[6],   TIMER_ON   );
+         TIMING_FUNC(   MHD_SameInterfaceB( lv, amr->FluSg[lv], amr->MagSg[lv] ),
+                        Timer_Main[6],   TIMER_ON   );
 
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )
             Aux_Message( stdout, "done\n" );
@@ -736,6 +782,9 @@ int main( int argc, char *argv[] )
 
       if ( ELBDM_REMOVE_MOTION_CM == ELBDM_REMOVE_MOTION_CM_EVERY_STEP )
       TIMING_FUNC(   ELBDM_RemoveMotionCM(),          Timer_Main[4],   TIMER_ON   );
+
+      if ( ELBDM_RESCALE_MASS_ERROR  &&  Step % ELBDM_RESCALE_MASS_STEPS == 0 )
+      TIMING_FUNC(   ELBDM_RescaleMassError(),        Timer_Main[4],   TIMER_ON   );
 #     endif // #if ( MODEL == ELBDM )
 //    ---------------------------------------------------------------------------------------------------
 
@@ -850,7 +899,10 @@ int main( int argc, char *argv[] )
 
    if ( MPI_Rank == 0  &&  OPT__RECORD_NOTE )
    {
-      FILE *Note = fopen( "Record__Note", "a" );
+      char FileName[2*MAX_STRING];
+      sprintf( FileName, "%s/Record__Note", OUTPUT_DIR );
+
+      FILE *Note = fopen( FileName, "a" );
       fprintf( Note, "\n" );
       fprintf( Note, "Total Processing Time : %lf s\n", Timer_Total.GetValue() );
       fprintf( Note, "\n" );

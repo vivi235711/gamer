@@ -15,11 +15,12 @@
 // ########################
 
 // current version
-#define VERSION      "gamer-2.1.1.dev"
+#define VERSION      "gamer-2.3.dev"
 
 
-// option == NONE --> the option is turned off
-#define NONE         0
+// option == OPTION_NONE --> the option is turned off
+// (we have renamed NONE to OPTION_NONE to ensure compatibility with cuFFTDx's .hpp files)
+#define OPTION_NONE  0
 
 
 // GPU architecture
@@ -30,22 +31,31 @@
 #define VOLTA        5
 #define TURING       6
 #define AMPERE       7
+#define ADA_LOVELACE 8
+#define HOPPER       9
+#define BLACKWELL    10
 
 #ifdef GPU
-#if   ( GPU_COMPUTE_CAPABILITY >= 200  &&  GPU_COMPUTE_CAPABILITY < 300 )
+#if   ( GPU_COMPUTE_CAPABILITY >= 200   &&  GPU_COMPUTE_CAPABILITY < 300 )
 # define GPU_ARCH FERMI
-#elif ( GPU_COMPUTE_CAPABILITY >= 300  &&  GPU_COMPUTE_CAPABILITY < 500 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 300   &&  GPU_COMPUTE_CAPABILITY < 500 )
 # define GPU_ARCH KEPLER
-#elif ( GPU_COMPUTE_CAPABILITY >= 500  &&  GPU_COMPUTE_CAPABILITY < 600 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 500   &&  GPU_COMPUTE_CAPABILITY < 600 )
 # define GPU_ARCH MAXWELL
-#elif ( GPU_COMPUTE_CAPABILITY >= 600  &&  GPU_COMPUTE_CAPABILITY < 700 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 600   &&  GPU_COMPUTE_CAPABILITY < 700 )
 # define GPU_ARCH PASCAL
-#elif ( GPU_COMPUTE_CAPABILITY >= 700  &&  GPU_COMPUTE_CAPABILITY < 750 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 700   &&  GPU_COMPUTE_CAPABILITY < 750 )
 # define GPU_ARCH VOLTA
-#elif ( GPU_COMPUTE_CAPABILITY >= 750  &&  GPU_COMPUTE_CAPABILITY < 800 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 750   &&  GPU_COMPUTE_CAPABILITY < 800 )
 # define GPU_ARCH TURING
-#elif ( GPU_COMPUTE_CAPABILITY >= 800  &&  GPU_COMPUTE_CAPABILITY < 890 )
+#elif ( GPU_COMPUTE_CAPABILITY >= 800   &&  GPU_COMPUTE_CAPABILITY < 890 )
 # define GPU_ARCH AMPERE
+#elif ( GPU_COMPUTE_CAPABILITY >= 890   &&  GPU_COMPUTE_CAPABILITY < 900 )
+# define GPU_ARCH ADA_LOVELACE
+#elif ( GPU_COMPUTE_CAPABILITY >= 900   &&  GPU_COMPUTE_CAPABILITY < 1000 )
+# define GPU_ARCH HOPPER
+#elif ( GPU_COMPUTE_CAPABILITY >= 1000  &&  GPU_COMPUTE_CAPABILITY <= 1210 )
+# define GPU_ARCH BLACKWELL
 #else
 # error : ERROR : Unknown GPU_COMPUTE_CAPABILITY !!
 #endif // GPU_COMPUTE_CAPABILITY
@@ -194,8 +204,15 @@
 #  define NCOMP_PASSIVE_BUILTIN1    0
 # endif
 
+// exact cooling source term
+# ifdef EXACT_COOLING
+#  define NCOMP_PASSIVE_BUILTIN2    1
+# else
+#  define NCOMP_PASSIVE_BUILTIN2    0
+# endif
+
 // total number of built-in scalars
-#  define NCOMP_PASSIVE_BUILTIN     ( NCOMP_PASSIVE_BUILTIN0 + NCOMP_PASSIVE_BUILTIN1 )
+#  define NCOMP_PASSIVE_BUILTIN     ( NCOMP_PASSIVE_BUILTIN0 + NCOMP_PASSIVE_BUILTIN1 + NCOMP_PASSIVE_BUILTIN2 )
 
 #endif // #if ( MODEL == HYDRO )
 
@@ -207,13 +224,22 @@
 // total number of passive scalars
 #  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + NCOMP_PASSIVE_BUILTIN )
 
+#if   ( MODEL == HYDRO )
 // assuming all passive scalars have the corresponding fluxes
 #  define NFLUX_PASSIVE       NCOMP_PASSIVE
+#elif ( MODEL == ELBDM )
+// assuming no flux for the passive scalars
+#  define NFLUX_PASSIVE       0
+#endif // MODEL
 
 
 // total number of variables in each cell and in the flux array including both active and passive variables
 #  define NCOMP_TOTAL         ( NCOMP_FLUID + NCOMP_PASSIVE )
 #  define NFLUX_TOTAL         ( NFLUX_FLUID + NFLUX_PASSIVE )
+
+
+// maximum number of reference values stored in ConRef[]
+#  define NCONREF_MAX         60
 
 
 // number of input/output fluid variables in the fluid solver
@@ -296,6 +322,13 @@
 #  define PASSIVE_NEXT_IDX2   ( PASSIVE_NEXT_IDX1 )
 # endif
 
+# ifdef EXACT_COOLING
+#  define TCOOL               ( PASSIVE_NEXT_IDX2 )
+#  define PASSIVE_NEXT_IDX3   ( TCOOL - 1         )
+# else
+#  define PASSIVE_NEXT_IDX3   ( PASSIVE_NEXT_IDX2 )
+# endif
+
 #endif // #if ( NCOMP_PASSIVE > 0 )
 
 // field indices of magnetic --> element of [0 ... NCOMP_MAG-1]
@@ -332,6 +365,13 @@
 #  define FLUX_NEXT_IDX2   ( FLUX_NEXT_IDX1  )
 # endif
 
+# ifdef EXACT_COOLING
+#  define FLUX_TCOOL       ( FLUX_NEXT_IDX2  )
+#  define FLUX_NEXT_IDX3   ( FLUX_TCOOL - 1  )
+# else
+#  define FLUX_NEXT_IDX3   ( FLUX_NEXT_IDX2  )
+# endif
+
 #endif // #if ( NCOMP_PASSIVE > 0 )
 
 // bitwise field indices
@@ -352,6 +392,10 @@
 
 # ifdef COSMIC_RAY
 #  define _CRAY               ( 1L << CRAY )
+# endif
+
+# ifdef EXACT_COOLING
+#  define _TCOOL              ( 1L << TCOOL )
 # endif
 
 #endif // #if ( NCOMP_PASSIVE > 0 )
@@ -381,6 +425,10 @@
 
 # ifdef COSMIC_RAY
 #  define _FLUX_CRAY          ( 1L << FLUX_CRAY )
+# endif
+
+# ifdef EXACT_COOLING
+#  define _FLUX_TCOOL         ( 1L << FLUX_TCOOL )
 # endif
 
 #endif // #if ( NFLUX_PASSIVE > 0 )
@@ -479,43 +527,52 @@
 #ifdef PARTICLE
 
 // number of built-in particle attributes
-// (1) mass, position*3, velocity*3, time, and type
-#  define PAR_NATT_BUILTIN0   9
+// floating-point: mass, position*3, velocity*3, and time
+// integer: type, uid, and flag
+#  define PAR_NATT_FLT_BUILTIN0   8
+#  define PAR_NATT_INT_BUILTIN0   3
 
 // acceleration*3 when STORE_PAR_ACC is adopted
 # if ( defined STORE_PAR_ACC  &&  defined GRAVITY )
-#  define PAR_NATT_BUILTIN1   3
+#  define PAR_NATT_FLT_BUILTIN1   3
 # else
-#  define PAR_NATT_BUILTIN1   0
+#  define PAR_NATT_FLT_BUILTIN1   0
 # endif
 
 // particle creation time when STAR_FORMATION is adopted
 # ifdef STAR_FORMATION
-#  define PAR_NATT_BUILTIN2   1
+#  define PAR_NATT_FLT_BUILTIN2   1
 # else
-#  define PAR_NATT_BUILTIN2   0
+#  define PAR_NATT_FLT_BUILTIN2   0
 # endif
 
 // **total** number of built-in particle attributes
-#  define PAR_NATT_BUILTIN    ( PAR_NATT_BUILTIN0 + PAR_NATT_BUILTIN1 + PAR_NATT_BUILTIN2 )
+#  define PAR_NATT_FLT_BUILTIN    ( PAR_NATT_FLT_BUILTIN0 + PAR_NATT_FLT_BUILTIN1 + PAR_NATT_FLT_BUILTIN2 )
+#  define PAR_NATT_INT_BUILTIN    ( PAR_NATT_INT_BUILTIN0 )
 
 
 // number of particle attributes that we do not want to store on disk (currently time + acceleration*3)
-#  define PAR_NATT_UNSTORED   ( 1 + PAR_NATT_BUILTIN1 )
-#  define PAR_NATT_STORED     ( PAR_NATT_TOTAL - PAR_NATT_UNSTORED )
+#  define PAR_NATT_FLT_UNSTORED   ( 1 + PAR_NATT_FLT_BUILTIN1 )
+#  define PAR_NATT_FLT_STORED     ( PAR_NATT_FLT_TOTAL - PAR_NATT_FLT_UNSTORED )
+#  define PAR_NATT_INT_UNSTORED   ( 0 )
+#  define PAR_NATT_INT_STORED     ( PAR_NATT_INT_TOTAL - PAR_NATT_INT_UNSTORED )
 
 
-// define PAR_NATT_USER if not set in the Makefile
-# ifndef PAR_NATT_USER
-#  define PAR_NATT_USER       0
+// define PAR_NATT_FLT/INT_USER if not set in the Makefile
+# ifndef PAR_NATT_FLT_USER
+#  define PAR_NATT_FLT_USER       0
+# endif
+# ifndef PAR_NATT_INT_USER
+#  define PAR_NATT_INT_USER       0
 # endif
 
 
 // total number of particle attributes (built-in + user-defined)
-#  define PAR_NATT_TOTAL      ( PAR_NATT_BUILTIN + PAR_NATT_USER )
+#  define PAR_NATT_FLT_TOTAL      ( PAR_NATT_FLT_BUILTIN + PAR_NATT_FLT_USER )
+#  define PAR_NATT_INT_TOTAL      ( PAR_NATT_INT_BUILTIN + PAR_NATT_INT_USER )
 
 
-// indices of built-in particle attributes in Par->Attribute[]
+// indices of built-in particle floating-point attributes in Par->AttributeFlt[]
 // --> must NOT modify their values
 #  define  PAR_MASS           0
 #  define  PAR_POSX           1
@@ -524,16 +581,21 @@
 #  define  PAR_VELX           4
 #  define  PAR_VELY           5
 #  define  PAR_VELZ           6
-#  define  PAR_TYPE           7
+
+// indices of built-in particle integer attributes in Par->AttributeInt[]
+// --> must NOT modify their values
+#  define  PAR_TYPE           0
+#  define  PAR_PUID           1
+#  define  PAR_FLAG           2
 
 // always put acceleration and time at the END of the particle attribute list
 // --> make it easier to discard them when storing data on disk (see Output_DumpData_Total(_HDF5).cpp)
 # if ( defined STORE_PAR_ACC  &&  defined GRAVITY )
-#  define  PAR_ACCX           ( PAR_NATT_TOTAL - 4 )
-#  define  PAR_ACCY           ( PAR_NATT_TOTAL - 3 )
-#  define  PAR_ACCZ           ( PAR_NATT_TOTAL - 2 )
+#  define  PAR_ACCX           ( PAR_NATT_FLT_TOTAL - 4 )
+#  define  PAR_ACCY           ( PAR_NATT_FLT_TOTAL - 3 )
+#  define  PAR_ACCZ           ( PAR_NATT_FLT_TOTAL - 2 )
 # endif
-#  define  PAR_TIME           ( PAR_NATT_TOTAL - 1 )
+#  define  PAR_TIME           ( PAR_NATT_FLT_TOTAL - 1 )
 
 
 // bitwise indices of particles
@@ -545,7 +607,6 @@
 #  define _PAR_VELX           ( 1L << PAR_VELX )
 #  define _PAR_VELY           ( 1L << PAR_VELY )
 #  define _PAR_VELZ           ( 1L << PAR_VELZ )
-#  define _PAR_TYPE           ( 1L << PAR_TYPE )
 # if ( defined STORE_PAR_ACC  &&  defined GRAVITY )
 #  define _PAR_ACCX           ( 1L << PAR_ACCX )
 #  define _PAR_ACCY           ( 1L << PAR_ACCY )
@@ -557,7 +618,12 @@
 # if ( defined STORE_PAR_ACC  &&  defined GRAVITY )
 #  define _PAR_ACC            ( _PAR_ACCX | _PAR_ACCY | _PAR_ACCZ )
 # endif
-#  define _PAR_TOTAL          (  ( 1L << PAR_NATT_TOTAL ) - 1L )
+#  define _PAR_FLT_TOTAL      (  ( 1L << PAR_NATT_FLT_TOTAL ) - 1L )
+
+#  define _PAR_TYPE           ( 1L << PAR_TYPE )
+#  define _PAR_PUID           ( 1L << PAR_PUID )
+#  define _PAR_FLAG           ( 1L << PAR_FLAG )
+#  define _PAR_INT_TOTAL      (  ( 1L << PAR_NATT_INT_TOTAL ) - 1L )
 
 // grid fields related to particles
 // --> note that _POTE = ( 1L << (NCOMP_TOTAL+NDERIVE) )
@@ -571,14 +637,24 @@
 
 // particle type macros
 
-// number of particle types (default: 4)
-#  define  PAR_NTYPE                4
+// number of particle types (default: 5)
+#  define  PAR_NTYPE                5
 
-// particle type indices (must be in the range 0<=index<PAR_NTYPE)
-#  define  PTYPE_TRACER          (real_par)0
-#  define  PTYPE_GENERIC_MASSIVE (real_par)1
-#  define  PTYPE_DARK_MATTER     (real_par)2
-#  define  PTYPE_STAR            (real_par)3
+// particle type indices (must be in the range 0<=index<PAR_NTYPE except for PTYPE_TBA)
+#  define  PTYPE_TBA                (long_par)-1
+#  define  PTYPE_TRACER             (long_par)0
+#  define  PTYPE_GENERIC_MASSIVE    (long_par)1
+#  define  PTYPE_DARK_MATTER        (long_par)2
+#  define  PTYPE_STAR               (long_par)3
+#  define  PTYPE_BLACK_HOLE         (long_par)4
+
+// particle uid to be assigned
+#  define  PUID_TBA                 (long_par)-1
+
+// particle refinement flags
+#  define  PFLAG_NO                 (long_par)0
+#  define  PFLAG_MANUAL             (long_par)9999
+#  define  PFLAG_TBA                (long_par)1234
 
 # ifdef GRAVITY
 #  define MASSIVE_PARTICLES
@@ -878,6 +954,11 @@
 #else
 #  define SRC_NAUX_DLEP          0
 #endif
+#ifdef EXACT_COOLING
+#  define SRC_NAUX_EC            10    // SrcTerms.EC_AuxArray_Flt/Int[]
+#else
+#  define SRC_NAUX_EC            0
+#endif
 #  define SRC_NAUX_USER          10    // SrcTerms.User_AuxArray_Flt/Int[]
 
 
@@ -919,6 +1000,32 @@
 
 #if ( ( GRAMFE_SCHEME == GRAMFE_MATMUL ) && defined( FLOAT8 ) )
 #   define GRAMFE_MATMUL_FLOAT8
+#endif
+
+
+// apply additional checks on equation-of-state calculations
+#if ( MODEL == HYDRO  &&  !defined BAROTROPIC_EOS  &&  EOS != EOS_GAMMA )
+#  define EXTRA_EOS_CHECK
+#endif
+
+
+// extend the unphysical-state check to account for floating-point rounding errors
+#ifdef EXTRA_EOS_CHECK
+#  define CHECK_UNPHY_ROUNDING
+#endif
+
+// maximum rounding-error factor to test
+// --> check the offsets: i*CHECK_UNPHY_ROUNDING_FACTOR*MACHINE_EPSILON,
+//     where i = CHECK_UNPHY_ROUNDING_IMIN, 0, CHECK_UNPHY_ROUNDING_IMAX
+// --> define it even when CHECK_UNPHY_ROUNDING is disabled so that it can be reused elsewhere
+#  define CHECK_UNPHY_ROUNDING_FACTOR  (real)3.0
+
+#ifdef CHECK_UNPHY_ROUNDING
+#  define CHECK_UNPHY_ROUNDING_IMIN   -1
+#  define CHECK_UNPHY_ROUNDING_IMAX   +1
+#else
+#  define CHECK_UNPHY_ROUNDING_IMIN    0
+#  define CHECK_UNPHY_ROUNDING_IMAX    0
 #endif
 
 
@@ -1082,6 +1189,12 @@
 #  define MPI_GAMER_REAL_PAR MPI_FLOAT
 #endif
 
+#ifdef INT8_PAR
+#  define MPI_GAMER_LONG_PAR MPI_LONG
+#else
+#  define MPI_GAMER_LONG_PAR MPI_INT
+#endif
+
 
 
 // ############
@@ -1185,6 +1298,14 @@
 #define BIDX( idx )     ( 1L << (idx) )
 
 
+// distance in 3D space
+#define DIST_SQR_3D( pos1, pos2 )   ( SQR(pos1[0] - pos2[0]) + \
+                                      SQR(pos1[1] - pos2[1]) + \
+                                      SQR(pos1[2] - pos2[2]) )
+#define DIST_3D_FLT( pos1, pos2 )   sqrtf( DIST_SQR_3D( pos1, pos2 ) )
+#define DIST_3D_DBL( pos1, pos2 )   sqrt( DIST_SQR_3D( pos1, pos2 ) )
+#define DIST_3D( pos1, pos2 )       SQRT( DIST_SQR_3D( pos1, pos2 ) )
+
 // helper macro for printing warning messages when resetting parameters
 #  define FORMAT_INT       %- 21d
 #  define FORMAT_LONG      %- 21ld
@@ -1217,10 +1338,10 @@
 #  undef UNSPLIT_GRAVITY
 #endif
 
-// currently we always set GPU_ARCH == NONE when GPU is off
+// currently we always set GPU_ARCH == OPTION_NONE when GPU is off
 #ifndef GPU
 #  undef  GPU_ARCH
-#  define GPU_ARCH NONE
+#  define GPU_ARCH OPTION_NONE
 #endif
 
 // currently we assume that particle acceleration is solely due to gravity

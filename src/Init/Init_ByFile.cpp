@@ -629,7 +629,7 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
 //
 // Note        :  1. Invoked by Init_ByFile_AssignData() using the function pointer Init_ByFile_User_Ptr()
 //                   --> The function pointer may be reset by various test problem initializers, in which case
-//                       this funtion will become useless
+//                       this function will become useless
 //                2. Does not floor and normalize passive scalars
 //                3. Calculate the dual-energy variable automatically instead of load it from the disk
 //                   --> When adopting DUAL_ENERGY, the input uniform-mesh array must NOT include the dual-energy
@@ -704,7 +704,8 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 
 #  ifdef DUAL_ENERGY
    fluid_out[DUAL] = Hydro_Con2Dual( fluid_in[DENS], fluid_in[MOMX], fluid_in[MOMY], fluid_in[MOMZ], fluid_in[ENGY], Emag,
-                                     EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+                                     EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table,
+                                     PassiveFloorMask );
 #  endif
 
 #  elif ( MODEL == ELBDM )

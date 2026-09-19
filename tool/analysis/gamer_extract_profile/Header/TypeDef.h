@@ -9,6 +9,18 @@ typedef double real;
 typedef float  real;
 #endif
 
+#ifdef FLOAT8_PAR
+typedef double real_par;
+#else
+typedef float  real_par;
+#endif
+
+#ifdef INT8_PAR
+typedef long long_par;
+#else
+typedef int  long_par;
+#endif
+
 
 #define WRONG              -999999
 
@@ -81,6 +93,10 @@ typedef float  real;
 #  define _DENS            ( 1L << (DENS) )
 #  define _REAL            ( 1L << (REAL) )
 #  define _IMAG            ( 1L << (IMAG) )
+
+// ELBDM schemes
+#  define ELBDM_WAVE       1
+#  define ELBDM_HYBRID     2
 
 #else
 #  error : ERROR : unsupported MODEL !!
